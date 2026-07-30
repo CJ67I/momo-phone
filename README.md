@@ -62,20 +62,19 @@
 ### 推荐：通过扩展管理器安装
 
 1. 打开 SillyTavern 的“扩展”面板，点击“安装扩展”。
-2. 粘贴以下任一 Git 仓库地址：
-   - GitHub：`https://github.com/gaigai315/yuzuki-phone.git`
-   - Gitee（中国大陆网络推荐）：`https://gitee.com/gaigai315/yuzuki-phone.git`
-3. 安装稳定版时分支留空（默认使用 `main`）；只有需要测试开发版时才填写 `dev`。
-4. 安装完成后刷新页面，在顶部导航栏或扩展菜单中找到“📱 柚月小手机”图标。
-5. （可选）在设置中配置 TTS 密钥和独立 API 密钥。
+2. 粘贴 Git 仓库地址：
+   - GitHub：`https://github.com/CJ67I/yuzuki-phone-seedream.git`
+3. 安装稳定版时分支留空（默认使用 `main`）。
+4. 安装完成后刷新页面，在顶部导航栏或扩展菜单中找到“柚月の手机·Seedream”图标。
+5. （可选）在设置中配置 Seedream / AtlasCloud API Key、TTS 密钥和独立 API 密钥。
 
 ### 手动安装
 
-将仓库文件夹命名为 `yuzuki-phone`，放入
-`SillyTavern/public/scripts/extensions/third-party/yuzuki-phone/`，确认该目录下直接包含
+将仓库文件夹命名为 `yuzuki-phone-seedream`，放入
+`SillyTavern/public/scripts/extensions/third-party/yuzuki-phone-seedream/`，确认该目录下直接包含
 `manifest.json`、`index.js` 和 `phone.css`，然后重启 SillyTavern。
 
-> 请勿安装到 `public/plugins/`。如果安装失败后提示同名目录已存在，请先确认其中不是有效安装，再删除报错信息所指向的残留 `yuzuki-phone` 目录后重试。
+> 请勿安装到 `public/plugins/`。本分支扩展目录名是 `yuzuki-phone-seedream`，可与残留的原版 `yuzuki-phone` 目录并存；若原版仍在加载，请在扩展面板中禁用原版，只保留本扩展。
 
 ---
 *Powered by yuzuki with ❤️*

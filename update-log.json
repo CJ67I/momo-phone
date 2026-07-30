@@ -1,5 +1,13 @@
 {
     "versions": {
+        "1.4.4": {
+            "date": "2026-07-30",
+            "items": [
+                "【新增】接入 AtlasCloud Seedream 生图（异步提交 generateImage + 轮询 prediction）。",
+                "【调整】扩展标识与安装目录改为 yuzuki-phone-seedream，避免与原版 yuzuki-phone 目录冲突。",
+                "【调整】默认生图供应商切换为 Seedream / AtlasCloud。"
+            ]
+        },
         "1.4.3": {
             "date": "2026-07-27",
             "items": [
