@@ -2823,7 +2823,7 @@ export class SettingsApp {
             parsed = {};
         }
 
-        const allowedProviders = new Set(['novelai', 'openai', 'siliconflow', 'sd', 'comfyui']);
+        const allowedProviders = new Set(['seedream', 'novelai', 'openai', 'siliconflow', 'sd', 'comfyui']);
         const bindings = {};
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
             this._getImagePromptAppDefs().forEach((def) => {
@@ -3122,12 +3122,20 @@ export class SettingsApp {
     }
 
     renderImageGenerationSection() {
-        const provider = String(this.storage.get('phone-image-provider') || 'novelai').trim() || 'novelai';
+        const provider = String(this.storage.get('phone-image-provider') || 'seedream').trim() || 'seedream';
         const enabled = this.storage.get('phone-image-enabled') === true || this.storage.get('phone-image-enabled') === 'true';
         const novelaiKey = String(this.storage.get('phone-image-novelai-key') || '').trim();
         const novelaiPublicKey = String(this.storage.get('phone-image-novelai-public-key') || '').trim();
         const openaiKey = String(this.storage.get('phone-image-openai-key') || '').trim();
         const openaiPublicKey = String(this.storage.get('phone-image-openai-public-key') || '').trim();
+        const seedreamKey = String(this.storage.get('phone-image-seedream-key') || '').trim();
+        const seedreamBaseUrl = String(this.storage.get('phone-image-seedream-base-url') || 'https://api.atlascloud.ai').trim() || 'https://api.atlascloud.ai';
+        const seedreamModel = String(this.storage.get('phone-image-seedream-model') || 'bytedance/seedream-v5.0-pro/text-to-image').trim() || 'bytedance/seedream-v5.0-pro/text-to-image';
+        const seedreamEditModel = String(this.storage.get('phone-image-seedream-edit-model') || 'bytedance/seedream-v5.0-pro/edit').trim() || 'bytedance/seedream-v5.0-pro/edit';
+        const seedreamThinking = String(this.storage.get('phone-image-seedream-thinking') || 'enabled').trim().toLowerCase() === 'disabled' ? 'disabled' : 'enabled';
+        const seedreamOutputFormat = String(this.storage.get('phone-image-seedream-output-format') || 'jpeg').trim().toLowerCase() === 'png' ? 'png' : 'jpeg';
+        const seedreamEnableBase64Output = this.storage.get('phone-image-seedream-enable-base64-output') !== false
+            && this.storage.get('phone-image-seedream-enable-base64-output') !== 'false';
         const siliconflowKey = String(this.storage.get('phone-image-siliconflow-key') || this.storage.get('siliconflow_api_key') || '').trim();
         const novelaiModel = String(this.storage.get('phone-image-novelai-model') || 'nai-diffusion-4-5-full').trim();
         const openaiModel = String(this.storage.get('phone-image-openai-model') || 'gpt-image-2').trim();
@@ -3324,6 +3332,7 @@ export class SettingsApp {
             `).join('')
             : '<div class="setting-desc" style="margin-top:8px;">当前组还没有 Vibe 图片。</div>';
         const imageProviderAppBindings = this._getImageProviderAppBindings();
+        const seedreamDisplay = provider === 'seedream' ? '' : 'display: none;';
         const novelaiDisplay = provider === 'novelai' ? '' : 'display: none;';
         const openaiDisplay = provider === 'openai' ? '' : 'display: none;';
         const siliconflowDisplay = provider === 'siliconflow' ? '' : 'display: none;';
@@ -3350,6 +3359,7 @@ export class SettingsApp {
                     <div style="display: flex; align-items: center; justify-content: space-between;">
                         <span style="font-size: 14px; color: #000;">生图供应商</span>
                         <select id="phone-image-provider" style="width: 150px; height: 30px; padding: 0 8px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 12px; background: #fafafa;">
+                            <option value="seedream" ${provider === 'seedream' ? 'selected' : ''}>Seedream / AtlasCloud</option>
                             <option value="novelai" ${provider === 'novelai' ? 'selected' : ''}>NovelAI / NAI</option>
                             <option value="openai" ${provider === 'openai' ? 'selected' : ''}>GPT / OpenAI兼容</option>
                             <option value="sd" ${provider === 'sd' ? 'selected' : ''}>本地 SD</option>
@@ -3357,6 +3367,87 @@ export class SettingsApp {
                             <option value="siliconflow" ${provider === 'siliconflow' ? 'selected' : ''}>硅基流动</option>
                         </select>
                     </div>
+                </div>
+            </div>
+
+            <div class="setting-section" id="phone-image-seedream-section" style="${seedreamDisplay}">
+                <div class="setting-section-title">Seedream / AtlasCloud</div>
+
+                ${this._renderImageProviderAppBinding('seedream', imageProviderAppBindings)}
+
+                <div class="setting-item">
+                    <div class="setting-label">Base URL</div>
+                    <div class="setting-desc">按 api.docx：默认 https://api.atlascloud.ai。一般无需修改。</div>
+                    <input type="text" id="phone-image-seedream-base-url"
+                           value="${this._escapeHtml(seedreamBaseUrl)}"
+                           placeholder="https://api.atlascloud.ai"
+                           style="width: 100%; height: 30px; padding: 0 8px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 12px; background: #fafafa; box-sizing: border-box; margin-top: 6px;">
+                </div>
+
+                <div class="setting-item" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-size: 14px; color: #000;">API Key</span>
+                    <div class="phone-secret-field" style="width: 150px; height: 30px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa;">
+                        <input type="text" class="phone-secret-input phone-secret-masked" id="phone-image-seedream-key"
+                               value="${this._escapeHtml(seedreamKey)}"
+                               placeholder="AtlasCloud API Key"
+                               style="width: 100%; min-width: 0; height: 100%; padding: 0 34px 0 8px; border: none; outline: none; font-size: 12px; background: transparent; box-sizing: border-box;">
+                        <button type="button" class="phone-password-toggle" data-toggle-password-target="phone-image-seedream-key" aria-label="显示 API Key" title="显示 API Key">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">文生图模型</div>
+                    <div class="setting-desc">无参考图时使用。对应 AtlasCloud text-to-image。</div>
+                    <input type="text" id="phone-image-seedream-model"
+                           value="${this._escapeHtml(seedreamModel)}"
+                           placeholder="bytedance/seedream-v5.0-pro/text-to-image"
+                           style="width: 100%; height: 30px; padding: 0 8px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 12px; background: #fafafa; box-sizing: border-box; margin-top: 6px;">
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">编辑模型</div>
+                    <div class="setting-desc">有参考图时使用。对应 api.docx 的 bytedance/seedream-v5.0-pro/edit。</div>
+                    <input type="text" id="phone-image-seedream-edit-model"
+                           value="${this._escapeHtml(seedreamEditModel)}"
+                           placeholder="bytedance/seedream-v5.0-pro/edit"
+                           style="width: 100%; height: 30px; padding: 0 8px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 12px; background: #fafafa; box-sizing: border-box; margin-top: 6px;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div class="setting-item">
+                        <div class="setting-label">Thinking</div>
+                        <select id="phone-image-seedream-thinking" style="width: 100%; height: 30px; padding: 0 8px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 12px; background: #fafafa; box-sizing: border-box; margin-top: 6px;">
+                            <option value="enabled" ${seedreamThinking === 'enabled' ? 'selected' : ''}>enabled</option>
+                            <option value="disabled" ${seedreamThinking === 'disabled' ? 'selected' : ''}>disabled（更快）</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-label">输出格式</div>
+                        <select id="phone-image-seedream-output-format" style="width: 100%; height: 30px; padding: 0 8px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 12px; background: #fafafa; box-sizing: border-box; margin-top: 6px;">
+                            <option value="jpeg" ${seedreamOutputFormat === 'jpeg' ? 'selected' : ''}>jpeg</option>
+                            <option value="png" ${seedreamOutputFormat === 'png' ? 'selected' : ''}>png</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item setting-toggle">
+                    <div>
+                        <div class="setting-label">返回 Base64</div>
+                        <div class="setting-desc">对应 enable_base64_output。浏览器端建议开启，避免结果 URL 跨域。</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="phone-image-seedream-enable-base64-output" ${seedreamEnableBase64Output ? 'checked' : ''}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <button id="phone-image-test-seedream" class="phone-image-test-btn" style="width: 100%; height: 34px; border: none; border-radius: 8px; background: #0f766e !important; color: #fff !important; font-size: 13px; font-weight: 600; cursor: pointer;">
+                        测试 Seedream 生图连接
+                    </button>
+                    <div class="setting-desc" id="phone-image-test-seedream-result" style="margin-top: 6px;">按 AtlasCloud 异步流程：提交 generateImage → 轮询 prediction。</div>
                 </div>
             </div>
 
@@ -5326,6 +5417,7 @@ export class SettingsApp {
         // 🖼️ 全局生图配置
         const imageEnabled = document.getElementById('phone-image-enabled');
         const imageProvider = document.getElementById('phone-image-provider');
+        const imageSeedreamSection = document.getElementById('phone-image-seedream-section');
         const imageNovelaiSection = document.getElementById('phone-image-novelai-section');
         const imageOpenaiSection = document.getElementById('phone-image-openai-section');
         const imageSiliconflowSection = document.getElementById('phone-image-siliconflow-section');
@@ -5398,10 +5490,11 @@ export class SettingsApp {
         const imageProviderAppBindInputs = Array.from(document.querySelectorAll('.phone-image-provider-app-bind'));
         const imageNovelaiOnlyRows = Array.from(document.querySelectorAll('.phone-image-novelai-only'));
         const setImageProviderVisibility = () => {
-            const provider = String(imageProvider?.value || 'novelai').trim() || 'novelai';
+            const provider = String(imageProvider?.value || 'seedream').trim() || 'seedream';
             const setSectionVisible = (section, visible) => {
                 section?.style.setProperty('display', visible ? 'block' : 'none', 'important');
             };
+            setSectionVisible(imageSeedreamSection, provider === 'seedream');
             setSectionVisible(imageNovelaiSection, provider === 'novelai');
             setSectionVisible(imageOpenaiSection, provider === 'openai');
             setSectionVisible(imageSiliconflowSection, provider === 'siliconflow');
@@ -6557,7 +6650,7 @@ export class SettingsApp {
         });
 
         imageProvider?.addEventListener('change', async (e) => {
-            const provider = String(e.target.value || 'novelai').trim() || 'novelai';
+            const provider = String(e.target.value || 'seedream').trim() || 'seedream';
             await this.storage.set('phone-image-provider', provider);
             setImageProviderVisibility();
             await refreshImagePromptFormForProvider(provider);
@@ -6579,6 +6672,28 @@ export class SettingsApp {
             });
         });
         syncImageProviderAppBindingInputs();
+
+        document.getElementById('phone-image-seedream-key')?.addEventListener('change', async (e) => {
+            await this.storage.set('phone-image-seedream-key', String(e.target.value || '').trim());
+        });
+        document.getElementById('phone-image-seedream-base-url')?.addEventListener('change', async (e) => {
+            await this.storage.set('phone-image-seedream-base-url', String(e.target.value || '').trim() || 'https://api.atlascloud.ai');
+        });
+        document.getElementById('phone-image-seedream-model')?.addEventListener('change', async (e) => {
+            await this.storage.set('phone-image-seedream-model', String(e.target.value || '').trim() || 'bytedance/seedream-v5.0-pro/text-to-image');
+        });
+        document.getElementById('phone-image-seedream-edit-model')?.addEventListener('change', async (e) => {
+            await this.storage.set('phone-image-seedream-edit-model', String(e.target.value || '').trim() || 'bytedance/seedream-v5.0-pro/edit');
+        });
+        document.getElementById('phone-image-seedream-thinking')?.addEventListener('change', async (e) => {
+            await this.storage.set('phone-image-seedream-thinking', String(e.target.value || 'enabled').trim() === 'disabled' ? 'disabled' : 'enabled');
+        });
+        document.getElementById('phone-image-seedream-output-format')?.addEventListener('change', async (e) => {
+            await this.storage.set('phone-image-seedream-output-format', String(e.target.value || 'jpeg').trim() === 'png' ? 'png' : 'jpeg');
+        });
+        document.getElementById('phone-image-seedream-enable-base64-output')?.addEventListener('change', async (e) => {
+            await this.storage.set('phone-image-seedream-enable-base64-output', !!e.target.checked);
+        });
 
         imageNovelaiKey?.addEventListener('change', async (e) => {
             const site = String(imageNovelaiSite?.value || currentNovelaiSite || 'official').trim() || 'official';
@@ -6732,6 +6847,76 @@ export class SettingsApp {
             await this.storage.set('phone-image-novelai-active-vibe-group', '');
             refreshNovelAIVibePanel('');
             setNovelAIVibeStatus(`已删除 Vibe 组：${target.name}`, '#666');
+        });
+
+        document.getElementById('phone-image-test-seedream')?.addEventListener('click', async (e) => {
+            const btn = e.currentTarget;
+            const resultEl = document.getElementById('phone-image-test-seedream-result');
+            const setResult = (text, color = '#666') => {
+                if (resultEl) {
+                    resultEl.textContent = text;
+                    resultEl.style.color = color;
+                }
+            };
+            const oldText = btn?.textContent || '测试 Seedream 生图连接';
+            try {
+                await this.storage.set('phone-image-provider', 'seedream');
+                await this.storage.set('phone-image-enabled', true);
+                const apiKey = String(document.getElementById('phone-image-seedream-key')?.value || '').trim();
+                const baseUrl = String(document.getElementById('phone-image-seedream-base-url')?.value || '').trim() || 'https://api.atlascloud.ai';
+                const model = String(document.getElementById('phone-image-seedream-model')?.value || '').trim() || 'bytedance/seedream-v5.0-pro/text-to-image';
+                const editModel = String(document.getElementById('phone-image-seedream-edit-model')?.value || '').trim() || 'bytedance/seedream-v5.0-pro/edit';
+                const thinking = String(document.getElementById('phone-image-seedream-thinking')?.value || 'enabled').trim() === 'disabled' ? 'disabled' : 'enabled';
+                const outputFormat = String(document.getElementById('phone-image-seedream-output-format')?.value || 'jpeg').trim() === 'png' ? 'png' : 'jpeg';
+                const enableBase64 = !!document.getElementById('phone-image-seedream-enable-base64-output')?.checked;
+                if (!apiKey) throw new Error('请先填写 AtlasCloud API Key（https://console.atlascloud.ai）');
+
+                await this.storage.set('phone-image-seedream-key', apiKey);
+                await this.storage.set('phone-image-seedream-base-url', baseUrl);
+                await this.storage.set('phone-image-seedream-model', model);
+                await this.storage.set('phone-image-seedream-edit-model', editModel);
+                await this.storage.set('phone-image-seedream-thinking', thinking);
+                await this.storage.set('phone-image-seedream-output-format', outputFormat);
+                await this.storage.set('phone-image-seedream-enable-base64-output', enableBase64);
+
+                const imageManager = window.VirtualPhone?.imageGenerationManager;
+                if (!imageManager?.generate) throw new Error('生图管理器未初始化');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = '测试中...';
+                }
+                setResult('正在提交 Seedream 任务并轮询结果...', '#0f766e');
+                const result = await imageManager.generate({
+                    app: 'wechat',
+                    provider: 'seedream',
+                    prompt: 'anime illustration, cute smartphone chat selfie sticker, soft light, clean background',
+                    width: 1024,
+                    height: 1024,
+                    ignoreEnabled: true
+                });
+                if (!result?.imageUrl && !result?.imageData) throw new Error('Seedream 未返回图片');
+                const imagePayload = String(result?.imageData || result?.imageUrl || '').trim();
+                const payloadType = imagePayload.startsWith('data:image/')
+                    ? 'Base64'
+                    : (imagePayload ? 'URL' : '');
+                const detail = [
+                    result.width && result.height ? `${result.width}x${result.height}` : '',
+                    result.size || '',
+                    result.model || '',
+                    payloadType
+                ].filter(Boolean).join(' · ');
+                setResult(`Seedream 连接成功，已收到图片数据${detail ? `：${detail}` : '。'}`, '#0f9f6e');
+                this.phoneShell?.showNotification?.('生图测试', detail ? `Seedream 连接成功 ${detail}` : 'Seedream 连接成功', '✅');
+            } catch (err) {
+                const message = err?.message || String(err || '测试失败');
+                setResult(`测试失败：${message}`, '#d33');
+                this.phoneShell?.showNotification?.('Seedream 生图测试失败', message, '❌');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = oldText;
+                }
+            }
         });
 
         document.getElementById('phone-image-test-novelai')?.addEventListener('click', async (e) => {

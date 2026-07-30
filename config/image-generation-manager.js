@@ -634,7 +634,7 @@ export class ImageGenerationManager {
         }
 
         const allowedApps = new Set(['honey', 'wechat', 'weibo', 'diary']);
-        const allowedProviders = new Set(['novelai', 'openai', 'siliconflow', 'sd', 'comfyui']);
+        const allowedProviders = new Set(['seedream', 'novelai', 'openai', 'siliconflow', 'sd', 'comfyui']);
         const bindings = {};
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
             Object.entries(parsed).forEach(([app, provider]) => {
@@ -829,7 +829,7 @@ export class ImageGenerationManager {
         const explicitProvider = String(overrides.provider || '').trim().toLowerCase();
         if (explicitProvider) return explicitProvider;
         const appKey = String(overrides.app || '').trim().toLowerCase();
-        return this.getBoundProviderForApp(appKey) || String(this._get('phone-image-provider', 'novelai')).trim() || 'novelai';
+        return this.getBoundProviderForApp(appKey) || String(this._get('phone-image-provider', 'seedream')).trim() || 'seedream';
     }
 
     getSizeForApp(app = '') {
@@ -906,6 +906,11 @@ export class ImageGenerationManager {
             openaiPublicRelayUrl: String(overrides.openaiPublicRelayUrl || this._get('phone-image-openai-public-relay-url', '')).trim(),
             openaiMode: 'images',
             openaiQuality: String(overrides.openaiQuality || openaiPromptPreset?.openaiQuality || this._get('phone-image-openai-quality', 'auto')).trim() || 'auto',
+            seedreamBaseUrl: this._normalizeSeedreamBaseUrl(overrides.seedreamBaseUrl || this._get('phone-image-seedream-base-url', 'https://api.atlascloud.ai')),
+            seedreamEditModel: String(overrides.seedreamEditModel || this._get('phone-image-seedream-edit-model', 'bytedance/seedream-v5.0-pro/edit')).trim() || 'bytedance/seedream-v5.0-pro/edit',
+            seedreamThinking: this._normalizeSeedreamThinking(overrides.seedreamThinking || this._get('phone-image-seedream-thinking', 'enabled')),
+            seedreamOutputFormat: this._normalizeSeedreamOutputFormat(overrides.seedreamOutputFormat || this._get('phone-image-seedream-output-format', 'jpeg')),
+            seedreamEnableBase64Output: overrides.seedreamEnableBase64Output ?? this._getBoolDefaultTrue('phone-image-seedream-enable-base64-output'),
             comfyuiMode: this._normalizeComfyUIMode(overrides.comfyuiMode || this._get('phone-image-comfyui-mode', 'local')),
             comfyuiUrl: this._getComfyUIEndpointUrl(overrides),
             comfyuiLocalUrl: this._normalizeComfyUIBaseUrl(overrides.comfyuiUrl || this._get('phone-image-comfyui-url', 'http://127.0.0.1:8188')),
@@ -937,7 +942,7 @@ export class ImageGenerationManager {
             publicKey: String(overrides.publicKey || this._get('phone-image-novelai-public-key', '')).trim(),
             publicUrl: String(overrides.publicUrl || this._get('phone-image-novelai-public-url', '')).trim(),
             queueUrl: site === 'public' ? '' : String(overrides.queueUrl || this._get('phone-image-novelai-queue-url', '')).trim(),
-            model: String(overrides.model || openaiPromptPreset?.openaiModel || this._get(`phone-image-${provider}-model`, '') || (provider === 'novelai' ? 'nai-diffusion-4-5-full' : (provider === 'siliconflow' ? legacySiliconflowModel || 'Kwai-Kolors/Kolors' : (provider === 'openai' ? 'gpt-image-2' : '')))).trim(),
+            model: String(overrides.model || openaiPromptPreset?.openaiModel || this._get(`phone-image-${provider}-model`, '') || (provider === 'seedream' ? 'bytedance/seedream-v5.0-pro/text-to-image' : (provider === 'novelai' ? 'nai-diffusion-4-5-full' : (provider === 'siliconflow' ? legacySiliconflowModel || 'Kwai-Kolors/Kolors' : (provider === 'openai' ? 'gpt-image-2' : ''))))).trim(),
             sampler: provider === 'sd'
                 ? String(overrides.sampler || this._get('phone-image-sd-sampler', 'Euler a')).trim() || 'Euler a'
                 : this._normalizeNovelAISampler(overrides.sampler || this._get('phone-image-novelai-sampler', 'k_euler')),
@@ -962,6 +967,9 @@ export class ImageGenerationManager {
         if (!config.enabled && options.ignoreEnabled !== true) throw new Error('生图功能未启用');
         if (!['sd', 'comfyui'].includes(config.provider) && !config.apiKey) throw new Error('缺少生图 API Key');
 
+        if (config.provider === 'seedream') {
+            return this._generateSeedream(options, config);
+        }
         if (config.provider === 'siliconflow') {
             return this._generateSiliconflow(options, config);
         }
@@ -4057,6 +4065,292 @@ export class ImageGenerationManager {
         } finally {
             await this._finishNovelAIQueue(queueInfo);
         }
+    }
+
+    _normalizeSeedreamBaseUrl(value) {
+        let baseUrl = String(value || '').trim().replace(/\/+$/, '');
+        if (!baseUrl) baseUrl = 'https://api.atlascloud.ai';
+        if (!/^https?:\/\/.+/i.test(baseUrl)) {
+            baseUrl = `https://${baseUrl.replace(/^\/+/, '')}`;
+        }
+        return baseUrl.replace(/\/+$/, '');
+    }
+
+    _normalizeSeedreamThinking(value) {
+        return String(value || '').trim().toLowerCase() === 'disabled' ? 'disabled' : 'enabled';
+    }
+
+    _normalizeSeedreamOutputFormat(value) {
+        return String(value || '').trim().toLowerCase() === 'png' ? 'png' : 'jpeg';
+    }
+
+    _getSeedreamAllowedSizes() {
+        return [
+            [2048, 2048], [2304, 1728], [1728, 2304], [2720, 1530], [1530, 2720],
+            [2496, 1664], [1664, 2496], [1024, 1024], [1536, 1536], [1776, 1328],
+            [1328, 1776], [2048, 1152], [1152, 2048]
+        ];
+    }
+
+    _getSeedreamSize(width, height) {
+        const w = Math.max(1, Number(width) || 1024);
+        const h = Math.max(1, Number(height) || 1024);
+        const targetRatio = w / h;
+        const targetArea = w * h;
+        let best = this._getSeedreamAllowedSizes()[0];
+        let bestScore = Number.POSITIVE_INFINITY;
+        for (const [sw, sh] of this._getSeedreamAllowedSizes()) {
+            const ratioDiff = Math.abs((sw / sh) - targetRatio);
+            const areaDiff = Math.abs((sw * sh) - targetArea) / Math.max(targetArea, 1);
+            const score = ratioDiff * 10 + areaDiff;
+            if (score < bestScore) {
+                bestScore = score;
+                best = [sw, sh];
+            }
+        }
+        return `${best[0]}*${best[1]}`;
+    }
+
+    _normalizeSeedreamImages(options = {}) {
+        const rawList = Array.isArray(options.novelAIReferences)
+            ? options.novelAIReferences
+            : (Array.isArray(options.referenceImages) ? options.referenceImages : []);
+        return rawList
+            .map((item) => {
+                if (typeof item === 'string') {
+                    const raw = String(item || '').trim();
+                    if (!raw) return '';
+                    if (/^data:image\//i.test(raw) || /^https?:\/\//i.test(raw)) return raw;
+                    const compact = raw.replace(/\s+/g, '');
+                    if (compact.length >= 80 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)) {
+                        return `data:image/png;base64,${compact}`;
+                    }
+                    return '';
+                }
+                const raw = String(
+                    item?.imageUrl
+                    || item?.url
+                    || item?.image
+                    || item?.imageData
+                    || item?.dataUrl
+                    || item?.base64
+                    || ''
+                ).trim();
+                if (!raw) return '';
+                if (/^data:image\//i.test(raw) || /^https?:\/\//i.test(raw)) return raw;
+                const compact = raw.replace(/\s+/g, '');
+                if (compact.length >= 80 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)) {
+                    return `data:image/png;base64,${compact}`;
+                }
+                return '';
+            })
+            .filter(Boolean)
+            .slice(0, 10);
+    }
+
+    _buildSeedreamAuthHeaders(config = {}) {
+        const apiKey = String(config.apiKey || '').trim();
+        if (!apiKey) throw new Error('请先填写 Seedream / AtlasCloud API Key');
+        return {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+        };
+    }
+
+    async _sleep(ms, signal = null) {
+        const waitMs = Math.max(0, Number(ms) || 0);
+        if (!waitMs) return;
+        if (!signal) {
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+            return;
+        }
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        await new Promise((resolve, reject) => {
+            const onAbort = () => {
+                clearTimeout(timer);
+                signal.removeEventListener('abort', onAbort);
+                reject(new DOMException('Aborted', 'AbortError'));
+            };
+            const timer = setTimeout(() => {
+                signal.removeEventListener('abort', onAbort);
+                resolve();
+            }, waitMs);
+            signal.addEventListener('abort', onAbort, { once: true });
+        });
+    }
+
+    async _pollSeedreamPrediction(baseUrl, predictionId, config, options = {}) {
+        const id = String(predictionId || '').trim();
+        if (!id) throw new Error('Seedream 未返回 prediction id');
+        const pollUrl = `${baseUrl}/api/v1/model/prediction/${encodeURIComponent(id)}`;
+        const maxAttempts = Math.max(1, Number(options.maxPollAttempts) || 150);
+        const intervalMs = Math.max(500, Number(options.pollIntervalMs) || 2000);
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            if (options.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+            const response = await fetch(pollUrl, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${String(config.apiKey || '').trim()}`,
+                    Accept: 'application/json'
+                },
+                signal: options.signal
+            });
+            const text = await response.text();
+            let payload = null;
+            try { payload = text ? JSON.parse(text) : null; } catch (e) { payload = null; }
+            if (!response.ok) {
+                const msg = payload?.message || payload?.error?.message || payload?.error || text || '';
+                throw new Error(`Seedream 轮询失败 (${response.status})${msg ? `: ${String(msg).slice(0, 180)}` : ''}`);
+            }
+
+            const data = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
+            const status = String(data?.status || payload?.status || '').trim().toLowerCase();
+            if (status === 'completed' || status === 'succeeded' || status === 'success') {
+                return data || payload;
+            }
+            if (status === 'failed' || status === 'error' || status === 'cancelled' || status === 'canceled') {
+                const errMsg = data?.error || data?.message || payload?.error || payload?.message || 'Generation failed';
+                throw new Error(`Seedream 生成失败：${String(errMsg).slice(0, 220)}`);
+            }
+            await this._sleep(intervalMs, options.signal);
+        }
+        throw new Error('Seedream 生成超时，请稍后重试');
+    }
+
+    _extractSeedreamOutput(payload) {
+        const data = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
+        const outputs = Array.isArray(data?.outputs)
+            ? data.outputs
+            : (Array.isArray(payload?.outputs) ? payload.outputs : []);
+        const first = outputs.find((item) => item !== null && item !== undefined && String(item).trim());
+        if (first === undefined) return '';
+        return this._normalizeImageResultString(first, { allowUrl: true });
+    }
+
+    async _generateSeedream(options, config) {
+        const prompt = String(options.prompt || '').trim();
+        if (!prompt) throw new Error('缺少生图提示词');
+        if (!String(config.apiKey || '').trim()) throw new Error('请先填写 Seedream / AtlasCloud API Key');
+
+        const width = Number(options.width || config.width) || 1024;
+        const height = Number(options.height || config.height) || 1024;
+        const size = this._getSeedreamSize(width, height);
+        const [requestedWidth, requestedHeight] = size.split('*').map(Number);
+        const images = this._normalizeSeedreamImages(options);
+        const hasReferenceImages = images.length > 0;
+        const model = hasReferenceImages
+            ? (String(config.seedreamEditModel || '').trim() || 'bytedance/seedream-v5.0-pro/edit')
+            : (String(config.model || '').trim() || 'bytedance/seedream-v5.0-pro/text-to-image');
+        const baseUrl = this._normalizeSeedreamBaseUrl(config.seedreamBaseUrl);
+        const positivePrompt = this._joinPrompt([config.fixedPrompt, prompt, config.fixedPromptEnd], '\n');
+        const negativePrompt = this._joinPrompt([config.negativePrompt, options.negativePrompt]);
+        const finalPrompt = negativePrompt
+            ? `${positivePrompt}\n\nAvoid: ${negativePrompt}`
+            : positivePrompt;
+        const enableBase64Output = config.seedreamEnableBase64Output !== false;
+        const payload = {
+            model,
+            prompt: finalPrompt,
+            size,
+            output_format: this._normalizeSeedreamOutputFormat(config.seedreamOutputFormat),
+            thinking: this._normalizeSeedreamThinking(config.seedreamThinking),
+            enable_base64_output: enableBase64Output
+        };
+        if (hasReferenceImages) {
+            payload.images = images;
+        }
+
+        if (config.debugPayload) {
+            console.log('[Seedream] request payload:', {
+                endpoint: `${baseUrl}/api/v1/model/generateImage`,
+                model,
+                size,
+                thinking: payload.thinking,
+                output_format: payload.output_format,
+                enable_base64_output: payload.enable_base64_output,
+                imageCount: images.length,
+                promptPreview: String(finalPrompt || '').slice(0, 240)
+            });
+        }
+
+        let generateResponse = null;
+        try {
+            generateResponse = await fetch(`${baseUrl}/api/v1/model/generateImage`, {
+                method: 'POST',
+                headers: this._buildSeedreamAuthHeaders(config),
+                body: JSON.stringify(payload),
+                signal: options.signal
+            });
+        } catch (err) {
+            const message = String(err?.message || err || '').trim();
+            if (/failed to fetch|networkerror|load failed/i.test(message)) {
+                throw new Error('Seedream 请求被浏览器拦截或网络失败。请确认可访问 api.atlascloud.ai，或检查 CORS/代理设置。');
+            }
+            throw err;
+        }
+
+        const generateText = await generateResponse.text();
+        let generatePayload = null;
+        try { generatePayload = generateText ? JSON.parse(generateText) : null; } catch (e) { generatePayload = null; }
+        if (!generateResponse.ok) {
+            const msg = generatePayload?.message
+                || generatePayload?.error?.message
+                || generatePayload?.error
+                || generateText
+                || '';
+            throw new Error(`Seedream 提交失败 (${generateResponse.status})${msg ? `: ${String(msg).slice(0, 180)}` : ''}`);
+        }
+
+        const predictionId = String(
+            generatePayload?.data?.id
+            || generatePayload?.id
+            || generatePayload?.data?.prediction_id
+            || generatePayload?.prediction_id
+            || ''
+        ).trim();
+
+        // 少数网关可能同步返回结果，优先直接提取。
+        let resultData = generatePayload?.data && typeof generatePayload.data === 'object'
+            ? generatePayload.data
+            : generatePayload;
+        let imageData = this._extractSeedreamOutput(generatePayload);
+        if (!imageData) {
+            if (!predictionId) throw new Error('Seedream 未返回 prediction id，也无法直接提取图片');
+            resultData = await this._pollSeedreamPrediction(baseUrl, predictionId, config, options);
+            imageData = this._extractSeedreamOutput(resultData);
+        }
+        if (!imageData) throw new Error('Seedream 未返回可用图片');
+
+        if (/^https?:\/\//i.test(imageData) && enableBase64Output) {
+            // 开启了 base64 但服务仍回 URL 时，尽量转成 data URL，避免后续跨域。
+            try {
+                imageData = await this._imageUrlToNovelAIReferenceDataUrl(imageData);
+            } catch (err) {
+                console.warn('[Seedream] 结果 URL 转 Base64 失败，将直接使用远端 URL:', err);
+            }
+        }
+
+        const imageInfo = imageData.startsWith('data:image/')
+            ? await this._waitForImageDecode(imageData).catch(() => ({ width: 0, height: 0 }))
+            : { width: 0, height: 0 };
+
+        return {
+            provider: 'seedream',
+            model,
+            prompt,
+            width: imageInfo.width || requestedWidth || width,
+            height: imageInfo.height || requestedHeight || height,
+            requestedWidth: requestedWidth || width,
+            requestedHeight: requestedHeight || height,
+            size,
+            thinking: payload.thinking,
+            outputFormat: payload.output_format,
+            predictionId: predictionId || String(resultData?.id || '').trim(),
+            imageData,
+            imageUrl: imageData
+        };
     }
 
     async _generateSiliconflow(options, config) {
