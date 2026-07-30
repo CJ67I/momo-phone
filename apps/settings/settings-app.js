@@ -5929,7 +5929,7 @@ export class SettingsApp {
             return this._getImagePromptAppDefs().find(def => def.id === normalizedApp)?.name || normalizedApp;
         };
         const buildImagePromptPresetSharePayload = (appKey, presets = []) => ({
-            type: 'yuzuki-phone-nai-presets',
+            type: 'momo-phone-nai-presets',
             version: 1,
             app: this._normalizeImagePromptApp(appKey),
             exportedAt: new Date().toISOString(),
@@ -5958,7 +5958,7 @@ export class SettingsApp {
             })).filter(preset => preset.name)
         });
         const buildOpenAIImagePresetSharePayload = (appKey, presets = []) => ({
-            type: 'yuzuki-phone-gpt-presets',
+            type: 'momo-phone-gpt-presets',
             version: 1,
             app: this._normalizeImagePromptApp(appKey),
             exportedAt: new Date().toISOString(),
@@ -6493,7 +6493,7 @@ export class SettingsApp {
             return nextName;
         };
         const buildComfyUIWorkflowSharePayload = (workflows = []) => ({
-            type: 'yuzuki-phone-comfyui-workflows',
+            type: 'momo-phone-comfyui-workflows',
             version: 1,
             exportedAt: new Date().toISOString(),
             workflows: (Array.isArray(workflows) ? workflows : []).map(workflow => ({

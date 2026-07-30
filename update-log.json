@@ -1,10 +1,19 @@
 {
     "versions": {
+        "1.5.0": {
+            "date": "2026-07-30",
+            "items": [
+                "【调整】项目全面更名为 Momo Phone，扩展目录改为 momo-phone，彻底避开原版 yuzuki-phone 安装冲突。",
+                "【调整】主样式文件更名为 momo-phone.css。",
+                "【新增】接入 AtlasCloud Seedream 生图（异步提交 generateImage + 轮询 prediction）。",
+                "【调整】默认生图供应商为 Seedream / AtlasCloud。"
+            ]
+        },
         "1.4.4": {
             "date": "2026-07-30",
             "items": [
                 "【新增】接入 AtlasCloud Seedream 生图（异步提交 generateImage + 轮询 prediction）。",
-                "【调整】扩展标识与安装目录改为 yuzuki-phone-seedream，避免与原版 yuzuki-phone 目录冲突。",
+                "【调整】扩展标识与安装目录曾改为 yuzuki-phone-seedream。",
                 "【调整】默认生图供应商切换为 Seedream / AtlasCloud。"
             ]
         },

@@ -2544,7 +2544,7 @@ export class ImageGenerationManager {
             },
             "9": {
                 inputs: {
-                    filename_prefix: "YuzukiPhone",
+                    filename_prefix: "MomoPhone",
                     images: ["8", 0]
                 },
                 class_type: "SaveImage"
@@ -3917,7 +3917,7 @@ export class ImageGenerationManager {
             },
             body: JSON.stringify({
                 prompt: built.workflow,
-                client_id: `yuzuki-phone-${Date.now()}-${Math.random().toString(16).slice(2)}`
+                client_id: `momo-phone-${Date.now()}-${Math.random().toString(16).slice(2)}`
             }),
             signal: options.signal
         });

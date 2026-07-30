@@ -351,7 +351,7 @@ export class TtsManager {
     async _uploadNimoCloneAudioToServer(file, mime = '') {
         const ext = this._getAudioExtension(mime, file?.name);
         const random = Math.random().toString(36).slice(2, 8);
-        const filename = `yuzuki-phone-mimo-clone-${Date.now()}-${random}.${ext}`;
+        const filename = `momo-phone-mimo-clone-${Date.now()}-${random}.${ext}`;
         const data = await this._readFileAsBase64(file);
         const headers = await this._buildStJsonHeaders();
         const rawFetch = this._getRawFetch();

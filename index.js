@@ -1,6 +1,6 @@
 /* ========================================================
- *  柚月小手机 (Yuzuki's Little Phone)
- *  作者 (Author): yuzuki
+ *  Momo Phone
+ *  作者 (Author): momo
  * 
  * ⚠️ 版权声明 (Copyright Notice):
  * 1. 禁止商业化：本项目仅供交流学习，严禁任何形式的倒卖、盈利等商业行为。
@@ -17,10 +17,10 @@
 import { tokenizeWangxiangTaskTags } from './apps/wangxiang/wangxiang-task-parser.js';
 
 const ST_PHONE_BASE_URL = new URL('./', import.meta.url).href;
-const ST_PHONE_VERSION = '1.4.4';
-const ST_PHONE_CSS_REVISION = '20260730-seedream-rename';
+const ST_PHONE_VERSION = '1.5.0';
+const ST_PHONE_CSS_REVISION = '20260730-momo-phone';
 const ST_PHONE_HONEY_ASSET_REVISION = '20260726-video-visibility';
-const ST_PHONE_GLOBAL_CSS_URL = new URL(`./phone.css?v=${ST_PHONE_VERSION}&r=${ST_PHONE_CSS_REVISION}`, import.meta.url).href;
+const ST_PHONE_GLOBAL_CSS_URL = new URL(`./momo-phone.css?v=${ST_PHONE_VERSION}&r=${ST_PHONE_CSS_REVISION}`, import.meta.url).href;
 const ST_PHONE_HONEY_MODULE_URL = new URL(`./apps/honey/honey-app.js?v=${ST_PHONE_VERSION}&r=${ST_PHONE_HONEY_ASSET_REVISION}`, import.meta.url).href;
 const ST_PHONE_HONEY_CSS_URL = new URL(`./apps/honey/honey.css?v=${ST_PHONE_VERSION}&r=${ST_PHONE_HONEY_ASSET_REVISION}`, import.meta.url).href;
 const ST_PHONE_HONEY_LOGO_URL = new URL('./apps/honey/honey.png', import.meta.url).href;
@@ -28,12 +28,12 @@ const ST_PHONE_HONEY_THEME_URL = new URL('./apps/honey/honeyzt.png', import.meta
 const ST_PHONE_GAMES_MODULE_URL = new URL('./apps/games/games-app.js', import.meta.url).href;
 const ST_PHONE_GAMES_CSS_URL = new URL('./apps/games/poker/poker.css?v=1.0.2', import.meta.url).href;
 const ST_PHONE_UPDATE_MANIFEST_URLS = [
-    'https://raw.githubusercontent.com/CJ67I/yuzuki-phone-seedream/main/manifest.json',
-    'https://raw.githubusercontent.com/CJ67I/yuzuki-phone-seedream/master/manifest.json'
+    'https://raw.githubusercontent.com/CJ67I/momo-phone/main/manifest.json',
+    'https://raw.githubusercontent.com/CJ67I/momo-phone/master/manifest.json'
 ];
 const ST_PHONE_UPDATE_LOG_URLS = [
-    'https://raw.githubusercontent.com/CJ67I/yuzuki-phone-seedream/main/update-log.json',
-    'https://raw.githubusercontent.com/CJ67I/yuzuki-phone-seedream/master/update-log.json'
+    'https://raw.githubusercontent.com/CJ67I/momo-phone/main/update-log.json',
+    'https://raw.githubusercontent.com/CJ67I/momo-phone/master/update-log.json'
 ];
 const ST_PHONE_LOCAL_UPDATE_LOG_URL = new URL('./update-log.json', import.meta.url).href;
 const WECHAT_ONLINE_PROACTIVE_ENABLED_KEY = 'wechat_online_proactive_enabled';
@@ -51,18 +51,17 @@ const ST_PHONE_CURRENT_UPDATE = {
     version: ST_PHONE_VERSION,
     date: '2026-07-30',
     items: [
-        '【新增】接入 AtlasCloud Seedream 生图（异步提交 + 轮询）。',
-        '【调整】扩展目录改名为 yuzuki-phone-seedream，避免与原版 yuzuki-phone 安装冲突。'
+        '【调整】项目全面更名为 Momo Phone（扩展目录 momo-phone），彻底避开原版 yuzuki-phone 安装冲突。',
+        '【新增】接入 AtlasCloud Seedream 生图（异步提交 + 轮询）。'
     ]
 };
 
 // 🔥 防重复加载检查（放在最前面，避免任何代码执行）
-// 使用独立标记，避免与残留的原版 yuzuki-phone 互相挡住加载
-if (window.GGP_YuzukiPhoneSeedream_Loaded) {
-    console.warn('⚠️ 柚月の手机·Seedream 已加载，跳过重复初始化');
+if (window.GGP_MomoPhone_Loaded) {
+    console.warn('⚠️ Momo Phone 已加载，跳过重复初始化');
 } else {
-    window.GGP_YuzukiPhoneSeedream_Loaded = true;
-    console.log(`🚀 柚月の手机·Seedream v${ST_PHONE_VERSION} 启动`);
+    window.GGP_MomoPhone_Loaded = true;
+    console.log(`🚀 Momo Phone v${ST_PHONE_VERSION} 启动`);
 
     // 🔥 核心模块（启动时加载）- 只加载最必要的
     let APPS, PhoneStorage;
@@ -4492,19 +4491,19 @@ if (window.GGP_YuzukiPhoneSeedream_Loaded) {
                 <div id="phoneDrawerToolRow" class="list-group-item flex-container flexGap5 interactable"
                      tabindex="0"
                      role="listitem"
-                     title="柚月の手机·Seedream (${statusText})">
+                     title="Momo Phone (${statusText})">
                     <div id="phoneDrawerIcon" class="fa-fw fa-solid fa-mobile-screen-button extensionsMenuExtensionButton"
                          style="position:relative; ${iconStyle}"
                          tabindex="0"
                          role="button">
                         <span id="phone-badge" class="badge-notification" style="display:none; position:absolute; top:-4px; right:-6px;"></span>
                     </div>
-                    <span>柚月の手机·Seedream</span>
+                    <span>Momo Phone</span>
                 </div>
             </div>
         ` : `
             <div id="phoneDrawerToolEntry" class="extension_container interactable" tabindex="0" role="button"
-                 title="柚月の手机·Seedream (${statusText})"
+                 title="Momo Phone (${statusText})"
                  style="position:relative; display:flex; align-items:center; justify-content:center; min-width:38px; min-height:38px;">
                 <div id="phoneDrawerIcon" class="fa-fw fa-solid fa-mobile-screen-button"
                      style="position:relative; display:flex; align-items:center; justify-content:center; width:100%; height:100%; ${iconStyle}"
@@ -4564,7 +4563,7 @@ if (window.GGP_YuzukiPhoneSeedream_Loaded) {
 
                     // 视觉反馈：图标变灰/点亮
                     drawerIcon.style.cssText = settings.enabled ? '' : 'opacity: 0.4; filter: grayscale(1);';
-                    drawerIcon.title = settings.enabled ? '柚月の手机·Seedream (已启用)' : '柚月の手机·Seedream (已休眠)';
+                    drawerIcon.title = settings.enabled ? 'Momo Phone (已启用)' : 'Momo Phone (已休眠)';
 
                     // 手机震动反馈
                     if (navigator.vibrate) navigator.vibrate(50);
@@ -8051,7 +8050,7 @@ if (window.GGP_YuzukiPhoneSeedream_Loaded) {
         const existing = document.getElementById(styleId);
         const style = existing || document.createElement('style');
         style.id = styleId;
-        style.setAttribute('data-owner', 'yuzuki-phone-seedream');
+        style.setAttribute('data-owner', 'momo-phone');
         style.textContent = `
             #phone-panel-content,
             #phone-panel-content .phone-screen,
