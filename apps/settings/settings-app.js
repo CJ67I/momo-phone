@@ -3389,6 +3389,20 @@ export class SettingsApp {
         const novelaiOnlyDisplay = provider === 'novelai' ? '' : 'display: none !important;';
 
         return `
+            <div class="setting-section" id="phone-image-fallback-library-section">
+                <div class="setting-section-title">本地图片库</div>
+                <div class="setting-item">
+                    <div class="setting-label">微信好友备用生图参考</div>
+                    <div class="setting-desc">上传本地图片到图库。微信好友没有设置个人生图参考时，生成该好友的个人图片会从这里随机选一张作为参考。已单独设置参考图的好友不受影响。</div>
+                    <input type="file" id="phone-image-library-upload" accept="image/png, image/jpeg, image/webp, image/gif, image/*" multiple style="display:none;">
+                    <button type="button" id="phone-image-library-add" style="width:100%; height:34px; margin-top:8px; border:none; border-radius:8px; background:#0f766e; color:#fff; font-size:13px; font-weight:600; cursor:pointer;">添加图片</button>
+                    <div id="phone-image-library-status" class="setting-desc" style="margin-top:6px;">最多 30 张，单张不超过 8MB，图片会保存到酒馆本地。</div>
+                    <div id="phone-image-library-list">
+                        ${this._renderFallbackImageLibraryGrid()}
+                    </div>
+                </div>
+            </div>
+
             <div class="setting-section">
                 <div class="setting-section-title">🖼️ 生图功能</div>
 
@@ -3414,20 +3428,6 @@ export class SettingsApp {
                             <option value="comfyui" ${provider === 'comfyui' ? 'selected' : ''}>ComfyUI</option>
                             <option value="siliconflow" ${provider === 'siliconflow' ? 'selected' : ''}>硅基流动</option>
                         </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-section" id="phone-image-fallback-library-section">
-                <div class="setting-section-title">本地图片库</div>
-                <div class="setting-item">
-                    <div class="setting-label">微信好友备用生图参考</div>
-                    <div class="setting-desc">上传本地图片到图库。微信好友没有设置个人生图参考时，生成该好友的个人图片会从这里随机选一张作为参考。已单独设置参考图的好友不受影响。</div>
-                    <input type="file" id="phone-image-library-upload" accept="image/png, image/jpeg, image/webp, image/gif, image/*" multiple style="display:none;">
-                    <button type="button" id="phone-image-library-add" style="width:100%; height:34px; margin-top:8px; border:none; border-radius:8px; background:#0f766e; color:#fff; font-size:13px; font-weight:600; cursor:pointer;">添加图片</button>
-                    <div id="phone-image-library-status" class="setting-desc" style="margin-top:6px;">最多 30 张，单张不超过 8MB，图片会保存到酒馆本地。</div>
-                    <div id="phone-image-library-list">
-                        ${this._renderFallbackImageLibraryGrid()}
                     </div>
                 </div>
             </div>

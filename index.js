@@ -17,7 +17,7 @@
 import { tokenizeWangxiangTaskTags } from './apps/wangxiang/wangxiang-task-parser.js';
 
 const ST_PHONE_BASE_URL = new URL('./', import.meta.url).href;
-const ST_PHONE_VERSION = '1.5.1';
+const ST_PHONE_VERSION = '1.5.2';
 const ST_PHONE_CSS_REVISION = '20260730-momo-phone';
 const ST_PHONE_HONEY_ASSET_REVISION = '20260726-video-visibility';
 const ST_PHONE_GLOBAL_CSS_URL = new URL(`./momo-phone.css?v=${ST_PHONE_VERSION}&r=${ST_PHONE_CSS_REVISION}`, import.meta.url).href;
@@ -1046,7 +1046,7 @@ if (window.GGP_MomoPhone_Loaded) {
             import('./config/time-manager.js'),    // 👈 取消懒加载
         import('./config/prompt-manager.js?v=20260726-video-background'),  // 👈 取消懒加载
             import('./config/tts-manager.js?v=20260607-mimo-relay-worker'),
-        import('./config/image-generation-manager.js?v=20260726-video-background'),
+        import('./config/image-generation-manager.js?v=20260929-image-library'),
             import('./config/worldbook-manager.js')
         ]);
 
@@ -1122,7 +1122,7 @@ if (window.GGP_MomoPhone_Loaded) {
     // 🔥 按需加载设置模块
     async function loadSettingsModule() {
         if (!SettingsApp) {
-            const module = await import('./apps/settings/settings-app.js?v=20260728-nai-only-visibility');
+            const module = await import('./apps/settings/settings-app.js?v=20260929-image-library');
             SettingsApp = module.SettingsApp;
         }
         return SettingsApp;
@@ -5063,7 +5063,7 @@ if (window.GGP_MomoPhone_Loaded) {
 
     async function ensureWechatAppForBackground() {
         try {
-            const module = await import('./apps/wechat/wechat-app.js');
+            const module = await import('./apps/wechat/wechat-app.js?v=20260929-image-library');
             if (!window.VirtualPhone) window.VirtualPhone = {};
             if (!window.VirtualPhone.wechatApp) {
                 window.VirtualPhone.wechatApp = new module.WechatApp(phoneShell, storage);
@@ -7805,7 +7805,7 @@ if (window.GGP_MomoPhone_Loaded) {
         }
 
         try {
-            const module = await import('./apps/wechat/wechat-app.js');
+            const module = await import('./apps/wechat/wechat-app.js?v=20260929-image-library');
             if (!window.VirtualPhone) window.VirtualPhone = {};
 
             // 单例复用
@@ -8461,7 +8461,7 @@ if (window.GGP_MomoPhone_Loaded) {
                         window.VirtualPhone.settingsApp.render();
                     });
                 } else if (appId === 'wechat') {
-                    import('./apps/wechat/wechat-app.js')
+                    import('./apps/wechat/wechat-app.js?v=20260929-image-library')
                         .then(module => {
                             try {
                                 // 🔥 单例模式：只在第一次打开时创建微信实例，拒绝重复绑定事件
@@ -8569,7 +8569,7 @@ if (window.GGP_MomoPhone_Loaded) {
                             phoneShell?.showNotification('错误', '音乐模块加载失败', '❌');
                         });
                 } else if (appId === 'weibo') {
-                    import('./apps/weibo/weibo-app.js')
+                    import('./apps/weibo/weibo-app.js?v=20260929-image-library')
                         .then(module => {
                             try {
                                 if (!window.VirtualPhone.weiboApp) {

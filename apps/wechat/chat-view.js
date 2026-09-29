@@ -7589,7 +7589,7 @@ renderChatRoom(chat) {
 
             let weiboApp = window.VirtualPhone?.weiboApp || null;
             if (!weiboApp) {
-                const module = await import('../weibo/weibo-app.js');
+                const module = await import('../weibo/weibo-app.js?v=20260929-image-library');
                 const phoneShell = window.VirtualPhone?.phoneShell || this.app.phoneShell;
                 const storage = window.VirtualPhone?.storage || this.app.storage;
                 if (!phoneShell || !storage) return;

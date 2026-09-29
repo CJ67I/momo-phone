@@ -13,7 +13,7 @@
 // 微博APP - 主控制器
 // ========================================
 import { WeiboData } from './weibo-data.js';
-import { WeiboView } from './weibo-view.js';
+import { WeiboView } from './weibo-view.js?v=20260929-image-library';
 
 export class WeiboApp {
     constructor(phoneShell, storage) {
