@@ -17,7 +17,7 @@
 import { tokenizeWangxiangTaskTags } from './apps/wangxiang/wangxiang-task-parser.js';
 
 const ST_PHONE_BASE_URL = new URL('./', import.meta.url).href;
-const ST_PHONE_VERSION = '1.5.2';
+const ST_PHONE_VERSION = '1.5.3';
 const ST_PHONE_CSS_REVISION = '20260730-momo-phone';
 const ST_PHONE_HONEY_ASSET_REVISION = '20260929-seedream-refs';
 const ST_PHONE_GLOBAL_CSS_URL = new URL(`./momo-phone.css?v=${ST_PHONE_VERSION}&r=${ST_PHONE_CSS_REVISION}`, import.meta.url).href;
@@ -51,8 +51,8 @@ const ST_PHONE_CURRENT_UPDATE = {
     version: ST_PHONE_VERSION,
     date: '2026-09-29',
     items: [
-        '【新增】生图设置增加本地图片库。微信好友没有个人生图参考时，会从图库随机选一张作为参考。',
-        '【新增】接入 AtlasCloud Seedream 生图（异步提交 + 轮询）。'
+        '【修复】生图时会把参考图一并提交给 Seedream，有参考图时使用编辑模型。',
+        '【修复】版本号提升到 1.5.3，扩展可以正常检测到这次更新。'
     ]
 };
 
@@ -1046,7 +1046,7 @@ if (window.GGP_MomoPhone_Loaded) {
             import('./config/time-manager.js'),    // 👈 取消懒加载
         import('./config/prompt-manager.js?v=20260726-video-background'),  // 👈 取消懒加载
             import('./config/tts-manager.js?v=20260607-mimo-relay-worker'),
-        import('./config/image-generation-manager.js?v=20260929-seedream-refs'),
+        import('./config/image-generation-manager.js?v=1.5.3&r=20260929-seedream-refs'),
             import('./config/worldbook-manager.js')
         ]);
 

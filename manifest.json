@@ -3,7 +3,7 @@
     "name": "momo-phone",
     "description": "Momo Phone：为酒馆定制的超拟真虚拟手机系统。支持微信、朋友圈、微博热搜、音视频通话、音乐播放，并接入 AtlasCloud Seedream 生图。",
     "author": "momo",
-    "version": "1.5.2",
+    "version": "1.5.3",
     "loading_order": 210,
     "requires": [],
     "optional": [],
