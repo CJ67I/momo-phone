@@ -1044,9 +1044,9 @@ export class MomentsView {
         const userName = String(this.app?.wechatData?.getUserInfo?.()?.name || '').trim();
         if (userName && senderName === userName) return null;
 
-        const contacts = this.app?.wechatData?.getContacts?.() || [];
-        return contacts.find(contact => this.app.wechatData._isSameLookupName?.(contact.name, senderName))
-            || contacts.find(contact => String(contact?.name || '').trim() === senderName)
+        const wechatData = this.app?.wechatData;
+        return wechatData?.findContactByNameLoose?.(senderName, { includeChats: true })
+            || wechatData?.getContactByName?.(senderName)
             || null;
     }
 

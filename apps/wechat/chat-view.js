@@ -4080,6 +4080,18 @@ renderChatRoom(chat) {
             imageManager.storage = storage;
         }
         const novelAIReferences = await this._buildWechatPersonalImageReferences(message);
+        const resolvedImageProvider = String(
+            imageManager.resolveProvider?.({ app: 'wechat' })
+            || storage?.get?.('phone-image-provider')
+            || ''
+        ).trim();
+        console.info('[Wechat Image] 生图前诊断', {
+            provider: resolvedImageProvider,
+            referenceCount: novelAIReferences.length,
+            mediaType: String(message?.mediaType || '').trim() || '(未记录)',
+            usePersonalReference: message?.usePersonalReference === true,
+            sender: String(message.from || message.sender || message.contactName || '').trim() || '(空)'
+        });
         const generationPrompt = this._buildWechatImagePromptWithContactTags(message, promptText);
         const generationId = `wechat_img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const previousImageUrl = String(message.generatedImageUrl || '').trim();
@@ -4300,17 +4312,9 @@ renderChatRoom(chat) {
         if (mediaType === '图片' && !explicitPersonalReference && !/^\[\s*个人图片\s*\]/.test(contentText)) return null;
         const senderName = String(message.from || message.sender || message.contactName || '').trim();
         if (!senderName || senderName === 'me') return null;
-        const contacts = this.app?.wechatData?.getContacts?.() || [];
-        const normalize = (value) => this._normalizeLookupName(value);
-        const senderKey = normalize(senderName);
-        return contacts.find(contact => this.app.wechatData._isSameLookupName?.(contact.name, senderName))
-            || contacts.find(contact => String(contact?.name || '').trim() === senderName)
-            || contacts.find(contact => {
-                const contactKey = normalize(contact?.name);
-                return contactKey
-                    && senderKey
-                    && (contactKey.includes(senderKey) || senderKey.includes(contactKey));
-            })
+        const wechatData = this.app?.wechatData;
+        return wechatData?.findContactByNameLoose?.(senderName, { includeChats: true })
+            || wechatData?.getContactByName?.(senderName)
             || null;
     }
 
@@ -7393,7 +7397,7 @@ renderChatRoom(chat) {
 
     async _ensureWangxiangAppForTaskInvitation() {
         if (window.VirtualPhone?.wangxiangApp) return window.VirtualPhone.wangxiangApp;
-        const module = await import('../wangxiang/wangxiang-app.js?v=1.5.5&r=20260929-seedream-bytes');
+        const module = await import('../wangxiang/wangxiang-app.js?v=1.5.6&r=20260929-seedream-edit');
         if (!window.VirtualPhone) window.VirtualPhone = {};
         window.VirtualPhone.wangxiangApp = new module.WangxiangApp(
             this.app.phoneShell,
@@ -7587,7 +7591,7 @@ renderChatRoom(chat) {
 
             let weiboApp = window.VirtualPhone?.weiboApp || null;
             if (!weiboApp) {
-                const module = await import('../weibo/weibo-app.js?v=1.5.5&r=20260929-seedream-bytes');
+                const module = await import('../weibo/weibo-app.js?v=1.5.6&r=20260929-seedream-edit');
                 const phoneShell = window.VirtualPhone?.phoneShell || this.app.phoneShell;
                 const storage = window.VirtualPhone?.storage || this.app.storage;
                 if (!phoneShell || !storage) return;

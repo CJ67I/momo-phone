@@ -1,5 +1,14 @@
 {
     "versions": {
+        "1.5.6": {
+            "date": "2026-09-29",
+            "items": [
+                "【修复】Seedream 编辑模式会把 NovelAI 式 tag 包装成「以参考图锁定角色 + 场景描述」，并按联系人参考强度调整保留力度。",
+                "【修复】有参考图时 Seedream 默认关闭 thinking，避免自动改写 prompt 冲掉参考意图。",
+                "【修复】微信/朋友圈用 findContactByNameLoose 解析参考图联系人；openai/siliconflow 在已有参考图时会报错而不是静默忽略。",
+                "【修复】版本号提升到 1.5.6，便于扩展检测到这次更新。"
+            ]
+        },
         "1.5.5": {
             "date": "2026-09-29",
             "items": [

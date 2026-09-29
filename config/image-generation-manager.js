@@ -988,10 +988,26 @@ export class ImageGenerationManager {
         };
     }
 
+    _countProvidedReferenceImages(options = {}) {
+        return this._collectSeedreamImageSources(options).length;
+    }
+
+    _providerSupportsReferenceImages(provider = '') {
+        return ['seedream', 'novelai', 'sd', 'comfyui'].includes(String(provider || '').trim().toLowerCase());
+    }
+
     async generate(options = {}) {
         const config = this.getConfig(options);
         if (!config.enabled && options.ignoreEnabled !== true) throw new Error('生图功能未启用');
         if (!['sd', 'comfyui'].includes(config.provider) && !config.apiKey) throw new Error('缺少生图 API Key');
+
+        const providedReferenceCount = this._countProvidedReferenceImages(options);
+        if (providedReferenceCount > 0 && !this._providerSupportsReferenceImages(config.provider)) {
+            throw new Error(
+                `当前生图供应商是 ${config.provider}，该接口只接收提示词，不会接收参考图。`
+                + '请到「设置 → 生图」把全局供应商或对应 App 绑定改为 Seedream / NovelAI / SD / ComfyUI。'
+            );
+        }
 
         if (config.provider === 'seedream') {
             return this._generateSeedream(options, config);
@@ -4118,6 +4134,46 @@ export class ImageGenerationManager {
         ];
     }
 
+    _getSeedreamReferenceStrengthFromOptions(options = {}) {
+        const rawList = Array.isArray(options.novelAIReferences)
+            ? options.novelAIReferences
+            : (Array.isArray(options.referenceImages) ? options.referenceImages : []);
+        const first = rawList.find((item) => item && typeof item === 'object');
+        const strength = Number(first?.strength ?? first?.referenceStrength);
+        if (!Number.isFinite(strength)) return 0.7;
+        return Math.max(0, Math.min(1, strength));
+    }
+
+    _wrapSeedreamEditPrompt(prompt, options = {}) {
+        const scene = String(prompt || '').trim();
+        if (!scene) return scene;
+        const strength = this._getSeedreamReferenceStrengthFromOptions(options);
+        let preserveInstruction = 'Preserve the same character identity, face, hairstyle, body proportions, and recognizable appearance from the reference image.';
+        if (strength >= 0.85) {
+            preserveInstruction = 'Strictly preserve the same character identity, face, hairstyle, body proportions, skin tone, and recognizable appearance from the reference image. Do not change who the person is.';
+        } else if (strength <= 0.35) {
+            preserveInstruction = 'Use the reference image mainly as a loose appearance guide while applying the scene description below.';
+        }
+        if (this._containsCjk(scene)) {
+            const cnPreserve = strength >= 0.85
+                ? '必须严格保持参考图中人物的五官、发型、体型、肤色与整体气质，不要换成其他人。'
+                : (strength <= 0.35
+                    ? '参考图仅作大致形象参考，按以下描述生成新画面：'
+                    : '保持参考图中人物的可识别外貌与身份，按以下描述生成新画面：');
+            return [
+                '以第一张参考图作为角色形象基准。',
+                cnPreserve,
+                scene
+            ].join('\n');
+        }
+        return [
+            'Use the first reference image as the character appearance anchor.',
+            preserveInstruction,
+            'Generate a new image that applies the following scene, pose, clothing, and composition requirements:',
+            scene
+        ].join('\n');
+    }
+
     _getSeedreamSize(width, height) {
         const w = Math.max(1, Number(width) || 1024);
         const h = Math.max(1, Number(height) || 1024);
@@ -4440,18 +4496,24 @@ export class ImageGenerationManager {
             ? (String(config.seedreamEditModel || '').trim() || 'bytedance/seedream-v5.0-pro/edit')
             : (String(config.model || '').trim() || 'bytedance/seedream-v5.0-pro/text-to-image');
         const baseUrl = this._normalizeSeedreamBaseUrl(config.seedreamBaseUrl);
-        const positivePrompt = this._joinPrompt([config.fixedPrompt, prompt, config.fixedPromptEnd], '\n');
+        const scenePrompt = hasReferenceImages
+            ? this._wrapSeedreamEditPrompt(prompt, options)
+            : prompt;
+        const positivePrompt = this._joinPrompt([config.fixedPrompt, scenePrompt, config.fixedPromptEnd], '\n');
         const negativePrompt = this._joinPrompt([config.negativePrompt, options.negativePrompt]);
         const finalPrompt = negativePrompt
             ? `${positivePrompt}\n\nAvoid: ${negativePrompt}`
             : positivePrompt;
         const enableBase64Output = config.seedreamEnableBase64Output !== false;
+        const thinking = hasReferenceImages
+            ? 'disabled'
+            : this._normalizeSeedreamThinking(config.seedreamThinking);
         const payload = {
             model,
             prompt: finalPrompt,
             size,
             output_format: this._normalizeSeedreamOutputFormat(config.seedreamOutputFormat),
-            thinking: this._normalizeSeedreamThinking(config.seedreamThinking),
+            thinking,
             enable_base64_output: enableBase64Output
         };
         if (hasReferenceImages) {

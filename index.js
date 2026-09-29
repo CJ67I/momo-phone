@@ -17,9 +17,9 @@
 import { tokenizeWangxiangTaskTags } from './apps/wangxiang/wangxiang-task-parser.js';
 
 const ST_PHONE_BASE_URL = new URL('./', import.meta.url).href;
-const ST_PHONE_VERSION = '1.5.5';
+const ST_PHONE_VERSION = '1.5.6';
 const ST_PHONE_CSS_REVISION = '20260730-momo-phone';
-const ST_PHONE_HONEY_ASSET_REVISION = '20260929-seedream-bytes';
+const ST_PHONE_HONEY_ASSET_REVISION = '20260929-seedream-edit';
 const ST_PHONE_GLOBAL_CSS_URL = new URL(`./momo-phone.css?v=${ST_PHONE_VERSION}&r=${ST_PHONE_CSS_REVISION}`, import.meta.url).href;
 const ST_PHONE_HONEY_MODULE_URL = new URL(`./apps/honey/honey-app.js?v=${ST_PHONE_VERSION}&r=${ST_PHONE_HONEY_ASSET_REVISION}`, import.meta.url).href;
 const ST_PHONE_HONEY_CSS_URL = new URL(`./apps/honey/honey.css?v=${ST_PHONE_VERSION}&r=${ST_PHONE_HONEY_ASSET_REVISION}`, import.meta.url).href;
@@ -51,8 +51,9 @@ const ST_PHONE_CURRENT_UPDATE = {
     version: ST_PHONE_VERSION,
     date: '2026-09-29',
     items: [
-        '【修复】参考图会先在浏览器里读出，再上传或内联提交给 Seedream 编辑模型，不再只按提示词生图。',
-        '【修复】版本号提升到 1.5.5，已安装的 1.5.3 和 1.5.4 都能检测到这次更新。'
+        '【修复】Seedream 有参考图时会改写为编辑向提示词，并关闭 thinking，提高按参考图锁脸效果。',
+        '【修复】微信/朋友圈联系人匹配与不支持参考图的供应商会明确报错。',
+        '【修复】版本号提升到 1.5.6，便于扩展检测到这次更新。'
     ]
 };
 
@@ -1046,7 +1047,7 @@ if (window.GGP_MomoPhone_Loaded) {
             import('./config/time-manager.js'),    // 👈 取消懒加载
         import('./config/prompt-manager.js?v=20260726-video-background'),  // 👈 取消懒加载
             import('./config/tts-manager.js?v=20260607-mimo-relay-worker'),
-        import('./config/image-generation-manager.js?v=1.5.5&r=20260929-seedream-bytes'),
+        import('./config/image-generation-manager.js?v=1.5.6&r=20260929-seedream-edit'),
             import('./config/worldbook-manager.js')
         ]);
 
@@ -5063,7 +5064,7 @@ if (window.GGP_MomoPhone_Loaded) {
 
     async function ensureWechatAppForBackground() {
         try {
-            const module = await import('./apps/wechat/wechat-app.js?v=1.5.5&r=20260929-seedream-bytes');
+            const module = await import('./apps/wechat/wechat-app.js?v=1.5.6&r=20260929-seedream-edit');
             if (!window.VirtualPhone) window.VirtualPhone = {};
             if (!window.VirtualPhone.wechatApp) {
                 window.VirtualPhone.wechatApp = new module.WechatApp(phoneShell, storage);
@@ -7351,7 +7352,7 @@ if (window.GGP_MomoPhone_Loaded) {
     }
 
     async function ensureWangxiangApp() {
-        const module = await import('./apps/wangxiang/wangxiang-app.js?v=1.5.5&r=20260929-seedream-bytes');
+        const module = await import('./apps/wangxiang/wangxiang-app.js?v=1.5.6&r=20260929-seedream-edit');
         if (!window.VirtualPhone.wangxiangApp) {
             window.VirtualPhone.wangxiangApp = new module.WangxiangApp(phoneShell, storage);
         }
@@ -7744,7 +7745,7 @@ if (window.GGP_MomoPhone_Loaded) {
                 const triggerChatLength = Array.isArray(triggerCtx?.chat) ? triggerCtx.chat.length : 0;
                 if (triggerChatLength > 0) {
                     // 懒加载 DiaryData 检查楼层差
-                    import('./apps/diary/diary-data.js?v=1.5.5&r=20260929-seedream-bytes').then(module => {
+                    import('./apps/diary/diary-data.js?v=1.5.6&r=20260929-seedream-edit').then(module => {
                         const diaryData = window.VirtualPhone.diaryApp?.diaryData
                             || new module.DiaryData(storage);
                         const diaryConfig = diaryData.getAutoSettings();
@@ -7805,7 +7806,7 @@ if (window.GGP_MomoPhone_Loaded) {
         }
 
         try {
-            const module = await import('./apps/wechat/wechat-app.js?v=1.5.5&r=20260929-seedream-bytes');
+            const module = await import('./apps/wechat/wechat-app.js?v=1.5.6&r=20260929-seedream-edit');
             if (!window.VirtualPhone) window.VirtualPhone = {};
 
             // 单例复用
@@ -8461,7 +8462,7 @@ if (window.GGP_MomoPhone_Loaded) {
                         window.VirtualPhone.settingsApp.render();
                     });
                 } else if (appId === 'wechat') {
-                    import('./apps/wechat/wechat-app.js?v=1.5.5&r=20260929-seedream-bytes')
+                    import('./apps/wechat/wechat-app.js?v=1.5.6&r=20260929-seedream-edit')
                         .then(module => {
                             try {
                                 // 🔥 单例模式：只在第一次打开时创建微信实例，拒绝重复绑定事件
@@ -8513,7 +8514,7 @@ if (window.GGP_MomoPhone_Loaded) {
                             phoneShell?.showNotification('错误', '微信模块加载失败', '❌');
                         });
                 } else if (appId === 'diary') {
-                    import('./apps/diary/diary-app.js?v=1.5.5&r=20260929-seedream-bytes')
+                    import('./apps/diary/diary-app.js?v=1.5.6&r=20260929-seedream-edit')
                         .then(module => {
                             try {
                                 if (!window.VirtualPhone.diaryApp) {
@@ -8569,7 +8570,7 @@ if (window.GGP_MomoPhone_Loaded) {
                             phoneShell?.showNotification('错误', '音乐模块加载失败', '❌');
                         });
                 } else if (appId === 'weibo') {
-                    import('./apps/weibo/weibo-app.js?v=1.5.5&r=20260929-seedream-bytes')
+                    import('./apps/weibo/weibo-app.js?v=1.5.6&r=20260929-seedream-edit')
                         .then(module => {
                             try {
                                 if (!window.VirtualPhone.weiboApp) {
@@ -8631,7 +8632,7 @@ if (window.GGP_MomoPhone_Loaded) {
                             phoneShell?.showNotification('错误', '魔坊模块加载失败', '❌');
                         });
                 } else if (appId === 'wangxiang') {
-                    import('./apps/wangxiang/wangxiang-app.js?v=1.5.5&r=20260929-seedream-bytes')
+                    import('./apps/wangxiang/wangxiang-app.js?v=1.5.6&r=20260929-seedream-edit')
                         .then(async module => {
                             try {
                                 if (!window.VirtualPhone.wangxiangApp) {
@@ -10061,7 +10062,7 @@ if (window.GGP_MomoPhone_Loaded) {
                                         if (diaryInjectEnabled) {
                                             let diaryData = window.VirtualPhone?.diaryApp?.diaryData || null;
                                             if (!diaryData) {
-                                                const diaryModule = await import('./apps/diary/diary-data.js?v=1.5.5&r=20260929-seedream-bytes');
+                                                const diaryModule = await import('./apps/diary/diary-data.js?v=1.5.6&r=20260929-seedream-edit');
                                                 diaryData = new diaryModule.DiaryData(storage);
                                             }
                                             diaryHistoryContent = diaryData?.buildOfflineInjectionContent?.() || '';
@@ -10128,7 +10129,7 @@ if (window.GGP_MomoPhone_Loaded) {
                                                 const parsed = typeof saved === 'string' ? JSON.parse(saved) : saved;
                                                 managedTasks = Array.isArray(parsed) ? parsed : [];
                                             }
-                                            const wangxiangModule = await import('./apps/wangxiang/wangxiang-app.js?v=1.5.5&r=20260929-seedream-bytes');
+                                            const wangxiangModule = await import('./apps/wangxiang/wangxiang-app.js?v=1.5.6&r=20260929-seedream-edit');
                                             wangxiangTaskContent = wangxiangModule.buildWangxiangTaskInjectionContent(managedTasks);
                                         }
                                     } catch (e) {
@@ -10150,7 +10151,7 @@ if (window.GGP_MomoPhone_Loaded) {
                                                 const parsed = typeof saved === 'string' ? JSON.parse(saved) : saved;
                                                 orders = Array.isArray(parsed) ? parsed : [];
                                             }
-                                            const wangxiangModule = await import('./apps/wangxiang/wangxiang-app.js?v=1.5.5&r=20260929-seedream-bytes');
+                                            const wangxiangModule = await import('./apps/wangxiang/wangxiang-app.js?v=1.5.6&r=20260929-seedream-edit');
                                             const currentUserName = String(SillyTavern?.getContext?.()?.name1 || '用户');
                                             wangxiangOrderContent = wangxiangModule.buildWangxiangOrderInjectionContent(orders, currentUserName);
                                         }

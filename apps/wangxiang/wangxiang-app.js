@@ -1043,7 +1043,7 @@ export class WangxiangApp {
 
         let wechatApp = window.VirtualPhone?.wechatApp || null;
         if (!wechatApp) {
-            const module = await import('../wechat/wechat-app.js?v=1.5.5&r=20260929-seedream-bytes');
+            const module = await import('../wechat/wechat-app.js?v=1.5.6&r=20260929-seedream-edit');
             wechatApp = new module.WechatApp(this.phoneShell, this.storage);
             if (!window.VirtualPhone) window.VirtualPhone = {};
             window.VirtualPhone.wechatApp = wechatApp;
