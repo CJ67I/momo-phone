@@ -13,7 +13,7 @@
 // 📔 日记APP - 核心控制器
 // ========================================
 
-import { DiaryData } from './diary-data.js';
+import { DiaryData } from './diary-data.js?v=1.5.5&r=20260929-seedream-bytes';
 import { DiaryView } from './diary-view.js';
 
 export class DiaryApp {

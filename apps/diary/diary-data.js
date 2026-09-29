@@ -901,17 +901,16 @@ export class DiaryData {
         if (!contact) return [];
         const referenceImage = String(contact.naiReferenceImage || contact.referenceImage || '').trim();
         if (!referenceImage || contact.naiReferenceEnabled === false || contact.naiReferenceEnabled === 'false') return [];
+        const rawStrength = Number(contact.naiReferenceStrength ?? 0.7);
+        const strength = Math.max(0, Math.min(1, Number.isFinite(rawStrength) ? rawStrength : 0.7));
+        const rawInfo = Number(contact.naiReferenceInformationExtracted ?? 1);
+        const informationExtracted = Math.max(0, Math.min(1, Number.isFinite(rawInfo) ? rawInfo : 1));
         try {
             const image = await this._imageUrlToDiaryReferenceDataUrl(referenceImage);
-            if (!image) return [];
-            const rawStrength = Number(contact.naiReferenceStrength ?? 0.7);
-            const strength = Math.max(0, Math.min(1, Number.isFinite(rawStrength) ? rawStrength : 0.7));
-            const rawInfo = Number(contact.naiReferenceInformationExtracted ?? 1);
-            const informationExtracted = Math.max(0, Math.min(1, Number.isFinite(rawInfo) ? rawInfo : 1));
-            return [{ image, strength, informationExtracted }];
+            return [{ image: image || referenceImage, strength, informationExtracted }];
         } catch (err) {
-            console.warn('[Diary NAI] 个人形象参考图读取失败，已跳过:', err);
-            return [];
+            console.warn('[Diary NAI] 个人形象参考图预读失败，将把原图交给生图接口:', err);
+            return [{ image: referenceImage, strength, informationExtracted }];
         }
     }
 

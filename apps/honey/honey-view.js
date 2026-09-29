@@ -7958,17 +7958,13 @@ export class HoneyView {
         if (hostNaiReference?.image) {
             try {
                 const referenceImageDataUrl = await this._imageUrlToDataUrl(hostNaiReference.image, { forNaiReference: true });
-                if (referenceImageDataUrl) {
-                    novelAIReferences = [{
-                        ...hostNaiReference,
-                        image: referenceImageDataUrl
-                    }];
-                }
+                novelAIReferences = [{
+                    ...hostNaiReference,
+                    image: referenceImageDataUrl || hostNaiReference.image
+                }];
             } catch (err) {
-                console.warn('[Honey NAI] 角色参考图读取失败，已跳过:', err);
-                if (!auto) {
-                    this.app?.phoneShell?.showNotification?.('蜜语', '角色参考图读取失败，本次将不使用参考图', '⚠️');
-                }
+                console.warn('[Honey NAI] 角色参考图预读失败，将把原图交给生图接口:', err);
+                novelAIReferences = [{ ...hostNaiReference }];
             }
         }
 

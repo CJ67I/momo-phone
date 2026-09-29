@@ -4366,12 +4366,10 @@ renderChatRoom(chat) {
         }
         try {
             const image = await this._imageUrlToWechatReferenceDataUrl(referenceImage);
-            if (!image) return [];
-            return [{ image, strength, informationExtracted }];
+            return [{ image: image || referenceImage, strength, informationExtracted }];
         } catch (err) {
-            console.warn('[Wechat NAI] 个人形象参考图读取失败，已跳过:', err);
-            this.app?.phoneShell?.showNotification?.('微信', '个人形象参考图读取失败，本次将不使用参考图', '⚠️');
-            return [];
+            console.warn('[Wechat NAI] 个人形象参考图预读失败，将把原图交给生图接口:', err);
+            return [{ image: referenceImage, strength, informationExtracted }];
         }
     }
 
@@ -7395,7 +7393,7 @@ renderChatRoom(chat) {
 
     async _ensureWangxiangAppForTaskInvitation() {
         if (window.VirtualPhone?.wangxiangApp) return window.VirtualPhone.wangxiangApp;
-        const module = await import('../wangxiang/wangxiang-app.js');
+        const module = await import('../wangxiang/wangxiang-app.js?v=1.5.5&r=20260929-seedream-bytes');
         if (!window.VirtualPhone) window.VirtualPhone = {};
         window.VirtualPhone.wangxiangApp = new module.WangxiangApp(
             this.app.phoneShell,
@@ -7589,7 +7587,7 @@ renderChatRoom(chat) {
 
             let weiboApp = window.VirtualPhone?.weiboApp || null;
             if (!weiboApp) {
-                const module = await import('../weibo/weibo-app.js?v=20260929-image-library');
+                const module = await import('../weibo/weibo-app.js?v=1.5.5&r=20260929-seedream-bytes');
                 const phoneShell = window.VirtualPhone?.phoneShell || this.app.phoneShell;
                 const storage = window.VirtualPhone?.storage || this.app.storage;
                 if (!phoneShell || !storage) return;

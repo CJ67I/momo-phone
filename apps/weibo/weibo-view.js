@@ -1730,7 +1730,7 @@ export class WeiboView {
         try {
             let wechatApp = window.currentWechatApp || window.ggp_currentWechatApp || window.VirtualPhone?.wechatApp || null;
             if (!wechatApp) {
-                const module = await import('../wechat/wechat-app.js?v=20260929-image-library');
+                const module = await import('../wechat/wechat-app.js?v=1.5.5&r=20260929-seedream-bytes');
                 const phoneShell = window.VirtualPhone?.phoneShell || this.app.phoneShell;
                 const storage = window.VirtualPhone?.storage || this.app.storage;
                 if (!phoneShell || !storage) return;
@@ -4149,23 +4149,26 @@ export class WeiboView {
             }
 
             referenceTasks.push((async () => {
+                const referenceName = String(contact?.name || name).trim();
                 try {
                     const image = await this._imageUrlToWeiboReferenceDataUrl(referenceImage);
-                    if (!image) throw new Error('好友参考图不是可用图片');
-                    const rawStrength = Number(contact?.naiReferenceStrength ?? 0.7);
-                    const rawInformation = Number(contact?.naiReferenceInformationExtracted ?? 1);
                     return {
-                        name: String(contact?.name || name).trim(),
+                        name: referenceName,
                         reference: {
-                            image,
+                            image: image || referenceImage,
                             strength,
                             informationExtracted
                         }
                     };
                 } catch (error) {
+                    console.warn('[Weibo Image] 好友参考图预读失败，将把原图交给生图接口:', error);
                     return {
-                        name: String(contact?.name || name).trim(),
-                        error
+                        name: referenceName,
+                        reference: {
+                            image: referenceImage,
+                            strength,
+                            informationExtracted
+                        }
                     };
                 }
             })());

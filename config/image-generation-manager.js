@@ -4139,55 +4139,204 @@ export class ImageGenerationManager {
 
     _extractSeedreamImageSource(item) {
         if (typeof item === 'string') return String(item || '').trim();
-        return String(
-            item?.imageUrl
-            || item?.url
-            || item?.image
-            || item?.imageData
-            || item?.dataUrl
-            || item?.base64
-            || item?.reference?.image
-            || item?.reference?.imageData
-            || ''
-        ).trim();
+        const candidates = [
+            item?.image,
+            item?.imageData,
+            item?.dataUrl,
+            item?.base64,
+            item?.imageUrl,
+            item?.url,
+            item?.source,
+            item?.reference?.image,
+            item?.reference?.imageData,
+            item?.reference?.imageUrl
+        ].map((value) => String(value || '').trim()).filter(Boolean);
+        const imageDataUrl = candidates.find((value) => /^data:image\//i.test(value));
+        if (imageDataUrl) return imageDataUrl;
+        const fetchable = candidates.find((value) => !/^data:/i.test(value));
+        if (fetchable) return fetchable;
+        return candidates[0] || '';
     }
 
-    _countSeedreamImageSources(options = {}) {
-        const rawList = Array.isArray(options.novelAIReferences)
-            ? options.novelAIReferences
-            : (Array.isArray(options.referenceImages) ? options.referenceImages : []);
-        return rawList.filter((item) => this._extractSeedreamImageSource(item)).length;
+    _collectSeedreamImageSources(options = {}) {
+        const sources = [];
+        const seen = new Set();
+        [options.novelAIReferences, options.referenceImages].forEach((list) => {
+            if (!Array.isArray(list)) return;
+            list.forEach((item) => {
+                if (sources.length >= 10) return;
+                const raw = this._extractSeedreamImageSource(item);
+                if (!raw || seen.has(raw)) return;
+                seen.add(raw);
+                sources.push(raw);
+            });
+        });
+        return sources;
     }
 
-    async _resolveSeedreamImageInput(raw, signal = null) {
+    _isSeedreamPublicImageUrl(value) {
+        const raw = String(value || '').trim();
+        if (!/^https?:\/\//i.test(raw)) return false;
+        try {
+            const url = new URL(raw);
+            const host = url.hostname.toLowerCase();
+            if (!host || host === 'localhost' || host === '0.0.0.0' || host === '::1' || host.endsWith('.local')) return false;
+            if (host === '127.0.0.1' || host === '[::1]') return false;
+            if (/^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return false;
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async _ensureImageBlob(blob) {
+        if (!blob) return null;
+        const type = String(blob.type || '').toLowerCase();
+        if (type.startsWith('image/')) return blob;
+        const header = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+        let mime = '';
+        if (header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4E && header[3] === 0x47) mime = 'image/png';
+        else if (header[0] === 0xFF && header[1] === 0xD8) mime = 'image/jpeg';
+        else if (header[0] === 0x47 && header[1] === 0x49 && header[2] === 0x46) mime = 'image/gif';
+        else if (header[0] === 0x52 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x46) mime = 'image/webp';
+        if (!mime) return null;
+        return new Blob([await blob.arrayBuffer()], { type: mime });
+    }
+
+    async _readSeedreamReferenceBlob(raw, signal) {
         const value = String(raw || '').trim();
-        if (!value) return '';
-        if (/^data:image\//i.test(value) || /^https?:\/\//i.test(value)) return value;
-        if (value.startsWith('/') || value.startsWith('blob:') || value.startsWith('./')) {
-            const dataUrl = await this._imageUrlToNovelAIReferenceDataUrl(value);
-            return /^data:image\//i.test(dataUrl) ? dataUrl : '';
+        if (!value) return null;
+        if (/^data:/i.test(value)) {
+            const response = await fetch(value, { signal });
+            if (!response.ok) throw new Error(`参考图读取失败 (${response.status})`);
+            return response.blob();
         }
         const compact = value.replace(/\s+/g, '');
         if (compact.length >= 80 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)) {
-            return `data:image/png;base64,${compact}`;
+            const response = await fetch(`data:image/png;base64,${compact}`, { signal });
+            return response.blob();
         }
-        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+        const url = value.startsWith('backgrounds/') ? `/${value}` : value;
+        const response = await fetch(url, {
+            credentials: 'include',
+            cache: 'no-store',
+            signal
+        });
+        if (!response.ok) throw new Error(`参考图读取失败 (${response.status})`);
+        return response.blob();
+    }
+
+    async _compressSeedreamReferenceBlob(blob) {
+        if (!blob || typeof document === 'undefined') return blob;
+        const type = String(blob.type || '').toLowerCase();
+        if (/^image\/(?:jpeg|png|webp)$/.test(type) && blob.size > 0 && blob.size <= 2 * 1024 * 1024) {
+            return blob;
+        }
+        const dataUrl = await this._blobToDataUrl(blob);
+        const image = await new Promise((resolve, reject) => {
+            const element = new Image();
+            element.onload = () => resolve(element);
+            element.onerror = () => reject(new Error('参考图无法解码'));
+            element.src = dataUrl;
+        });
+        const maxEdge = 1536;
+        const sourceWidth = Math.max(1, Number(image.naturalWidth || image.width) || 1);
+        const sourceHeight = Math.max(1, Number(image.naturalHeight || image.height) || 1);
+        const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+        canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+        const context = canvas.getContext('2d');
+        if (!context) return blob;
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const compressed = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+        return compressed && compressed.size > 0 ? compressed : blob;
+    }
+
+    _extractSeedreamUploadUrl(payload) {
+        const buckets = [payload?.data, payload].filter((item) => item && typeof item === 'object');
+        const keys = ['download_url', 'url', 'file_url', 'media_url', 'image_url'];
+        for (const bucket of buckets) {
+            for (const key of keys) {
+                const value = String(bucket?.[key] || '').trim();
+                if (this._isSeedreamPublicImageUrl(value)) return value;
+            }
+            const nested = bucket?.data && typeof bucket.data === 'object' ? bucket.data : null;
+            if (!nested) continue;
+            for (const key of keys) {
+                const value = String(nested?.[key] || '').trim();
+                if (this._isSeedreamPublicImageUrl(value)) return value;
+            }
+        }
         return '';
     }
 
-    async _normalizeSeedreamImages(options = {}) {
-        const rawList = Array.isArray(options.novelAIReferences)
-            ? options.novelAIReferences
-            : (Array.isArray(options.referenceImages) ? options.referenceImages : []);
-        const images = [];
-        for (const item of rawList) {
-            if (images.length >= 10) break;
-            const raw = this._extractSeedreamImageSource(item);
-            if (!raw) continue;
-            const resolved = await this._resolveSeedreamImageInput(raw, options.signal);
-            if (resolved) images.push(resolved);
+    async _uploadSeedreamMedia(blob, config, signal) {
+        const mime = String(blob?.type || 'image/jpeg').toLowerCase();
+        const ext = mime.includes('png') ? 'png' : (mime.includes('webp') ? 'webp' : (mime.includes('gif') ? 'gif' : 'jpg'));
+        const file = new File([blob], `seedream-reference.${ext}`, { type: mime || 'image/jpeg' });
+        const form = new FormData();
+        form.append('file', file);
+        const baseUrl = this._normalizeSeedreamBaseUrl(config.seedreamBaseUrl);
+        const response = await fetch(`${baseUrl}/api/v1/model/uploadMedia`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${String(config.apiKey || '').trim()}`,
+                Accept: 'application/json'
+            },
+            body: form,
+            signal
+        });
+        const text = await response.text();
+        let payload = null;
+        try { payload = text ? JSON.parse(text) : null; } catch (e) { payload = null; }
+        if (!response.ok) {
+            const msg = payload?.message || payload?.error?.message || payload?.error || text || '';
+            throw new Error(`参考图上传失败 (${response.status})${msg ? `: ${String(msg).slice(0, 160)}` : ''}`);
         }
-        return images;
+        const downloadUrl = this._extractSeedreamUploadUrl(payload);
+        if (!downloadUrl) throw new Error('参考图上传成功，但没有返回可访问地址');
+        return downloadUrl;
+    }
+
+    async _resolveSeedreamImageForApi(raw, config, signal) {
+        const value = String(raw || '').trim();
+        if (!value) return '';
+        if (this._isSeedreamPublicImageUrl(value)) return value;
+        const blob = await this._ensureImageBlob(await this._readSeedreamReferenceBlob(value, signal));
+        if (!blob) throw new Error('参考图不是可用图片');
+        let prepared = blob;
+        try {
+            prepared = await this._compressSeedreamReferenceBlob(blob);
+        } catch (err) {
+            console.warn('[Seedream] 参考图压缩失败，改用原图:', err);
+            prepared = blob;
+        }
+        try {
+            return await this._uploadSeedreamMedia(prepared, config, signal);
+        } catch (err) {
+            console.warn('[Seedream] 参考图上传失败，改为把图片内容放进生图请求:', err);
+            const dataUrl = await this._blobToDataUrl(prepared);
+            if (/^data:image\//i.test(dataUrl)) return dataUrl;
+            throw err;
+        }
+    }
+
+    async _prepareSeedreamImages(options = {}, config = {}) {
+        const sources = this._collectSeedreamImageSources(options);
+        const images = [];
+        const errors = [];
+        for (const source of sources) {
+            if (images.length >= 10) break;
+            try {
+                const resolved = await this._resolveSeedreamImageForApi(source, config, options.signal);
+                if (resolved) images.push(resolved);
+                else errors.push('参考图不是可用图片');
+            } catch (err) {
+                errors.push(String(err?.message || err || '参考图读取失败'));
+            }
+        }
+        return { providedCount: sources.length, images, errors };
     }
 
     _buildSeedreamAuthHeaders(config = {}) {
@@ -4280,11 +4429,12 @@ export class ImageGenerationManager {
         const height = Number(options.height || config.height) || 1024;
         const size = this._getSeedreamSize(width, height);
         const [requestedWidth, requestedHeight] = size.split('*').map(Number);
-        const providedReferenceCount = this._countSeedreamImageSources(options);
-        const images = await this._normalizeSeedreamImages(options);
-        if (providedReferenceCount > 0 && images.length === 0) {
-            throw new Error('已有参考图，但无法读取成 Seedream 可提交的图片。请确认参考图仍可访问。');
+        const preparedImages = await this._prepareSeedreamImages(options, config);
+        if (preparedImages.providedCount > 0 && preparedImages.images.length === 0) {
+            const reason = preparedImages.errors.find(Boolean) || '参考图无法读取';
+            throw new Error(`已有参考图，但没有提交给 Seedream：${reason}`);
         }
+        const images = preparedImages.images;
         const hasReferenceImages = images.length > 0;
         const model = hasReferenceImages
             ? (String(config.seedreamEditModel || '').trim() || 'bytedance/seedream-v5.0-pro/edit')
@@ -4308,6 +4458,12 @@ export class ImageGenerationManager {
             payload.images = images;
         }
 
+        console.info(
+            `[Seedream] 模型 ${model}，参考图 ${images.length} 张`
+            + (images.length
+                ? `（${images.map((item) => (String(item).startsWith('data:') ? '内联图片' : '已上传')).join('、')}）`
+                : '')
+        );
         if (config.debugPayload) {
             console.log('[Seedream] request payload:', {
                 endpoint: `${baseUrl}/api/v1/model/generateImage`,
@@ -4317,6 +4473,11 @@ export class ImageGenerationManager {
                 output_format: payload.output_format,
                 enable_base64_output: payload.enable_base64_output,
                 imageCount: images.length,
+                images: images.map((item) => (
+                    String(item).startsWith('data:')
+                        ? `data-url:${String(item).length}`
+                        : String(item).slice(0, 120)
+                )),
                 promptPreview: String(finalPrompt || '').slice(0, 240)
             });
         }

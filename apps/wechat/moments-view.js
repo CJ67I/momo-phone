@@ -1107,12 +1107,10 @@ export class MomentsView {
         }
         try {
             const image = await this._imageUrlToMomentReferenceDataUrl(referenceImage);
-            if (!image) return [];
-            return [{ image, strength, informationExtracted }];
+            return [{ image: image || referenceImage, strength, informationExtracted }];
         } catch (err) {
-            console.warn('[Moments NAI] 个人形象参考图读取失败，已跳过:', err);
-            this.app?.phoneShell?.showNotification?.('朋友圈', '个人形象参考图读取失败，本次将不使用参考图', '⚠️');
-            return [];
+            console.warn('[Moments NAI] 个人形象参考图预读失败，将把原图交给生图接口:', err);
+            return [{ image: referenceImage, strength, informationExtracted }];
         }
     }
 
