@@ -825,6 +825,32 @@ export class ImageGenerationManager {
         };
     }
 
+    getFallbackImageLibrary() {
+        const raw = this.storage?.get?.('phone-image-fallback-library');
+        let parsed = [];
+        try {
+            parsed = typeof raw === 'string' ? JSON.parse(raw || '[]') : raw;
+        } catch (e) {
+            parsed = [];
+        }
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+            .map((item) => ({
+                id: String(item?.id || '').trim(),
+                url: String(item?.url || '').trim(),
+                name: String(item?.name || '').trim()
+            }))
+            .filter((item) => item.id && (/^\/backgrounds\//i.test(item.url) || /^https?:\/\//i.test(item.url) || /^data:image\//i.test(item.url)))
+            .slice(0, 30);
+    }
+
+    pickRandomFallbackLibraryImage() {
+        const items = this.getFallbackImageLibrary();
+        if (!items.length) return '';
+        const index = Math.floor(Math.random() * items.length);
+        return String(items[index]?.url || '').trim();
+    }
+
     resolveProvider(overrides = {}) {
         const explicitProvider = String(overrides.provider || '').trim().toLowerCase();
         if (explicitProvider) return explicitProvider;

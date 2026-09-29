@@ -4124,10 +4124,29 @@ export class WeiboView {
             const contactTags = String(contact?.naiPromptTags || contact?.imageTags || '').trim();
             if (contactTags) identityTagGroups.push(contactTags);
 
-            const referenceImage = String(contact?.naiReferenceImage || contact?.referenceImage || '').trim();
+            const personalImage = String(contact?.naiReferenceImage || contact?.referenceImage || '').trim();
             const referenceEnabled = contact?.naiReferenceEnabled !== false
                 && contact?.naiReferenceEnabled !== 'false';
-            if (!referenceImage || !referenceEnabled) return;
+            let referenceImage = '';
+            let strength = 0.7;
+            let informationExtracted = 1;
+            if (personalImage && referenceEnabled) {
+                referenceImage = personalImage;
+                const rawStrength = Number(contact?.naiReferenceStrength ?? 0.7);
+                const rawInformation = Number(contact?.naiReferenceInformationExtracted ?? 1);
+                strength = Math.max(0, Math.min(1, Number.isFinite(rawStrength) ? rawStrength : 0.7));
+                informationExtracted = Math.max(0, Math.min(1, Number.isFinite(rawInformation) ? rawInformation : 1));
+            } else if (!personalImage) {
+                const imageManager = window.VirtualPhone?.imageGenerationManager;
+                const storage = this.app?.storage || window.VirtualPhone?.storage || null;
+                if (imageManager && storage && imageManager.storage !== storage) {
+                    imageManager.storage = storage;
+                }
+                referenceImage = String(imageManager?.pickRandomFallbackLibraryImage?.() || '').trim();
+                if (!referenceImage) return;
+            } else {
+                return;
+            }
 
             referenceTasks.push((async () => {
                 try {
@@ -4139,8 +4158,8 @@ export class WeiboView {
                         name: String(contact?.name || name).trim(),
                         reference: {
                             image,
-                            strength: Math.max(0, Math.min(1, Number.isFinite(rawStrength) ? rawStrength : 0.7)),
-                            informationExtracted: Math.max(0, Math.min(1, Number.isFinite(rawInformation) ? rawInformation : 1))
+                            strength,
+                            informationExtracted
                         }
                     };
                 } catch (error) {

@@ -1083,15 +1083,31 @@ export class MomentsView {
     async _buildMomentPersonalImageReferences(moment = null, index = 0) {
         const contact = this._resolveMomentPersonalReferenceContact(moment, index);
         if (!contact) return [];
-        const referenceImage = String(contact.naiReferenceImage || contact.referenceImage || '').trim();
-        if (!referenceImage || contact.naiReferenceEnabled === false || contact.naiReferenceEnabled === 'false') return [];
+        const personalImage = String(contact.naiReferenceImage || contact.referenceImage || '').trim();
+        const personalDisabled = contact.naiReferenceEnabled === false || contact.naiReferenceEnabled === 'false';
+        let referenceImage = '';
+        let strength = 0.7;
+        let informationExtracted = 1;
+        if (personalImage && !personalDisabled) {
+            referenceImage = personalImage;
+            const rawStrength = Number(contact.naiReferenceStrength ?? 0.7);
+            strength = Math.max(0, Math.min(1, Number.isFinite(rawStrength) ? rawStrength : 0.7));
+            const rawInfo = Number(contact.naiReferenceInformationExtracted ?? 1);
+            informationExtracted = Math.max(0, Math.min(1, Number.isFinite(rawInfo) ? rawInfo : 1));
+        } else if (!personalImage) {
+            const imageManager = window.VirtualPhone?.imageGenerationManager;
+            const storage = this.app?.storage || window.VirtualPhone?.storage || null;
+            if (imageManager && storage && imageManager.storage !== storage) {
+                imageManager.storage = storage;
+            }
+            referenceImage = String(imageManager?.pickRandomFallbackLibraryImage?.() || '').trim();
+            if (!referenceImage) return [];
+        } else {
+            return [];
+        }
         try {
             const image = await this._imageUrlToMomentReferenceDataUrl(referenceImage);
             if (!image) return [];
-            const rawStrength = Number(contact.naiReferenceStrength ?? 0.7);
-            const strength = Math.max(0, Math.min(1, Number.isFinite(rawStrength) ? rawStrength : 0.7));
-            const rawInfo = Number(contact.naiReferenceInformationExtracted ?? 1);
-            const informationExtracted = Math.max(0, Math.min(1, Number.isFinite(rawInfo) ? rawInfo : 1));
             return [{ image, strength, informationExtracted }];
         } catch (err) {
             console.warn('[Moments NAI] 个人形象参考图读取失败，已跳过:', err);

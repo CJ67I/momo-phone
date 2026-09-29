@@ -17,7 +17,7 @@
 import { tokenizeWangxiangTaskTags } from './apps/wangxiang/wangxiang-task-parser.js';
 
 const ST_PHONE_BASE_URL = new URL('./', import.meta.url).href;
-const ST_PHONE_VERSION = '1.5.0';
+const ST_PHONE_VERSION = '1.5.1';
 const ST_PHONE_CSS_REVISION = '20260730-momo-phone';
 const ST_PHONE_HONEY_ASSET_REVISION = '20260726-video-visibility';
 const ST_PHONE_GLOBAL_CSS_URL = new URL(`./momo-phone.css?v=${ST_PHONE_VERSION}&r=${ST_PHONE_CSS_REVISION}`, import.meta.url).href;
@@ -49,9 +49,9 @@ const PHONE_TRIPLE_TAP_ENABLED_KEY = 'phone-triple-tap-enabled';
 const WECHAT_MESSAGE_SOUND_URL = new URL('./assets/sounds/iphone-message-notification.mp3', ST_PHONE_BASE_URL).href;
 const ST_PHONE_CURRENT_UPDATE = {
     version: ST_PHONE_VERSION,
-    date: '2026-07-30',
+    date: '2026-09-29',
     items: [
-        '【调整】项目全面更名为 Momo Phone（扩展目录 momo-phone），彻底避开原版 yuzuki-phone 安装冲突。',
+        '【新增】生图设置增加本地图片库。微信好友没有个人生图参考时，会从图库随机选一张作为参考。',
         '【新增】接入 AtlasCloud Seedream 生图（异步提交 + 轮询）。'
     ]
 };

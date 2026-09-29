@@ -3121,6 +3121,54 @@ export class SettingsApp {
         await this.storage.set('phone-image-novelai-vibe-groups', JSON.stringify(this._normalizeNovelAIVibeGroups(groups)));
     }
 
+    _getFallbackImageLibrary() {
+        const raw = this.storage.get('phone-image-fallback-library');
+        let parsed = [];
+        try {
+            parsed = typeof raw === 'string' ? JSON.parse(raw || '[]') : raw;
+        } catch (e) {
+            parsed = [];
+        }
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+            .map((item) => ({
+                id: String(item?.id || '').trim(),
+                url: String(item?.url || '').trim(),
+                name: String(item?.name || '').trim()
+            }))
+            .filter((item) => item.id && item.url)
+            .slice(0, 30);
+    }
+
+    async _saveFallbackImageLibrary(items) {
+        const normalized = (Array.isArray(items) ? items : [])
+            .map((item) => ({
+                id: String(item?.id || '').trim(),
+                url: String(item?.url || '').trim(),
+                name: String(item?.name || '').trim()
+            }))
+            .filter((item) => item.id && item.url)
+            .slice(0, 30);
+        await this.storage.set('phone-image-fallback-library', JSON.stringify(normalized));
+        return normalized;
+    }
+
+    _renderFallbackImageLibraryGrid(items = this._getFallbackImageLibrary()) {
+        if (!items.length) {
+            return '<div class="setting-desc" id="phone-image-library-empty" style="margin-top: 8px;">图库还是空的。添加图片后，没有个人生图参考的微信好友会从这里随机抽一张。</div>';
+        }
+        return `
+            <div id="phone-image-library-grid" style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:8px; margin-top:8px;">
+                ${items.map((item) => `
+                    <div style="position:relative; border-radius:8px; overflow:hidden; background:#eee; aspect-ratio:1;">
+                        <img src="${this._escapeHtml(item.url)}" alt="${this._escapeHtml(item.name || '参考图')}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                        <button type="button" class="phone-image-library-remove" data-library-id="${this._escapeHtml(item.id)}" aria-label="删除图片" title="删除" style="position:absolute; top:4px; right:4px; width:22px; height:22px; border:none; border-radius:999px; background:rgba(0,0,0,0.62); color:#fff; font-size:14px; line-height:22px; padding:0; cursor:pointer;">×</button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
     renderImageGenerationSection() {
         const provider = String(this.storage.get('phone-image-provider') || 'seedream').trim() || 'seedream';
         const enabled = this.storage.get('phone-image-enabled') === true || this.storage.get('phone-image-enabled') === 'true';
@@ -3366,6 +3414,20 @@ export class SettingsApp {
                             <option value="comfyui" ${provider === 'comfyui' ? 'selected' : ''}>ComfyUI</option>
                             <option value="siliconflow" ${provider === 'siliconflow' ? 'selected' : ''}>硅基流动</option>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-section" id="phone-image-fallback-library-section">
+                <div class="setting-section-title">本地图片库</div>
+                <div class="setting-item">
+                    <div class="setting-label">微信好友备用生图参考</div>
+                    <div class="setting-desc">上传本地图片到图库。微信好友没有设置个人生图参考时，生成该好友的个人图片会从这里随机选一张作为参考。已单独设置参考图的好友不受影响。</div>
+                    <input type="file" id="phone-image-library-upload" accept="image/png, image/jpeg, image/webp, image/gif, image/*" multiple style="display:none;">
+                    <button type="button" id="phone-image-library-add" style="width:100%; height:34px; margin-top:8px; border:none; border-radius:8px; background:#0f766e; color:#fff; font-size:13px; font-weight:600; cursor:pointer;">添加图片</button>
+                    <div id="phone-image-library-status" class="setting-desc" style="margin-top:6px;">最多 30 张，单张不超过 8MB，图片会保存到酒馆本地。</div>
+                    <div id="phone-image-library-list">
+                        ${this._renderFallbackImageLibraryGrid()}
                     </div>
                 </div>
             </div>
@@ -6654,6 +6716,85 @@ export class SettingsApp {
             await this.storage.set('phone-image-provider', provider);
             setImageProviderVisibility();
             await refreshImagePromptFormForProvider(provider);
+        });
+
+        const refreshFallbackLibraryList = () => {
+            const list = document.getElementById('phone-image-library-list');
+            if (list) list.innerHTML = this._renderFallbackImageLibraryGrid();
+        };
+        document.getElementById('phone-image-library-add')?.addEventListener('click', () => {
+            document.getElementById('phone-image-library-upload')?.click();
+        });
+        document.getElementById('phone-image-library-upload')?.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files || []);
+            e.target.value = '';
+            if (!files.length) return;
+            const statusEl = document.getElementById('phone-image-library-status');
+            const setStatus = (text, color = '#666') => {
+                if (!statusEl) return;
+                statusEl.textContent = text;
+                statusEl.style.color = color;
+            };
+            const imageUploader = window.VirtualPhone?.imageManager;
+            if (!imageUploader?.uploadBlob) {
+                setStatus('图片上传管理器未初始化，请先打开一次手机后再添加。', '#d33');
+                return;
+            }
+            let library = this._getFallbackImageLibrary();
+            let added = 0;
+            for (const file of files) {
+                if (library.length >= 30) {
+                    setStatus('图库已满 30 张，请先删除再添加。', '#d33');
+                    break;
+                }
+                if (!String(file.type || '').startsWith('image/')) continue;
+                if (Number(file.size || 0) > 8 * 1024 * 1024) {
+                    setStatus(`${file.name || '图片'} 超过 8MB，已跳过。`, '#d33');
+                    continue;
+                }
+                try {
+                    setStatus(`正在上传 ${file.name || '图片'}...`, '#0f766e');
+                    const uploadedUrl = await imageUploader.uploadBlob(file, 'momo_ref_lib');
+                    if (!uploadedUrl) throw new Error('上传未返回路径');
+                    library.push({
+                        id: `lib_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                        url: uploadedUrl,
+                        name: String(file.name || '').trim()
+                    });
+                    library = await this._saveFallbackImageLibrary(library);
+                    added += 1;
+                } catch (err) {
+                    console.warn('图库图片上传失败:', err);
+                    setStatus(err?.message || '上传失败', '#d33');
+                }
+            }
+            refreshFallbackLibraryList();
+            if (added > 0) {
+                setStatus(`已添加 ${added} 张图片。当前图库 ${this._getFallbackImageLibrary().length} 张。`, '#0f9f6e');
+                this.phoneShell?.showNotification?.('本地图片库', `已添加 ${added} 张`, '✅');
+            }
+        });
+        document.getElementById('phone-image-library-list')?.addEventListener('click', async (e) => {
+            const button = e.target?.closest?.('.phone-image-library-remove');
+            if (!button) return;
+            const id = String(button.dataset.libraryId || '').trim();
+            if (!id) return;
+            const library = this._getFallbackImageLibrary();
+            const target = library.find((item) => item.id === id);
+            if (!target) return;
+            const next = await this._saveFallbackImageLibrary(library.filter((item) => item.id !== id));
+            refreshFallbackLibraryList();
+            const statusEl = document.getElementById('phone-image-library-status');
+            if (statusEl) {
+                statusEl.textContent = `已删除。当前图库 ${next.length} 张。`;
+                statusEl.style.color = '#666';
+            }
+            const imageUploader = window.VirtualPhone?.imageManager;
+            if (target.url && imageUploader?.deleteManagedBackgroundByPath) {
+                imageUploader.deleteManagedBackgroundByPath(target.url).catch((err) => {
+                    console.warn('删除图库图片文件失败:', err);
+                });
+            }
         });
 
         imageProviderAppBindInputs.forEach((input) => {
