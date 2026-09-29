@@ -9,7 +9,7 @@
  * 
  * Copyright (c) yuzuki. All rights reserved.
  * ======================================================== */
-import { HoneyView } from './honey-view.js?v=1.4.2&r=20260726-video-visibility';
+import { HoneyView } from './honey-view.js?v=1.5.2&r=20260929-seedream-refs';
 import { HoneyData } from './honey-data.js?v=1.4.2&r=20260726-video-visibility';
 
 export class HoneyApp {

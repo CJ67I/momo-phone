@@ -7953,9 +7953,7 @@ export class HoneyView {
             : '';
         const hostNaiReference = comfySceneReferenceImage
             ? { image: comfySceneReferenceImage }
-            : (['novelai', 'sd', 'comfyui'].includes(provider)
-                ? this.app?.honeyData?.getHostNaiReference?.(sceneHostName)
-                : null);
+            : this.app?.honeyData?.getHostNaiReference?.(sceneHostName);
         let novelAIReferences = [];
         if (hostNaiReference?.image) {
             try {

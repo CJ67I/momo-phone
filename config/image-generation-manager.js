@@ -4137,41 +4137,57 @@ export class ImageGenerationManager {
         return `${best[0]}*${best[1]}`;
     }
 
-    _normalizeSeedreamImages(options = {}) {
+    _extractSeedreamImageSource(item) {
+        if (typeof item === 'string') return String(item || '').trim();
+        return String(
+            item?.imageUrl
+            || item?.url
+            || item?.image
+            || item?.imageData
+            || item?.dataUrl
+            || item?.base64
+            || item?.reference?.image
+            || item?.reference?.imageData
+            || ''
+        ).trim();
+    }
+
+    _countSeedreamImageSources(options = {}) {
         const rawList = Array.isArray(options.novelAIReferences)
             ? options.novelAIReferences
             : (Array.isArray(options.referenceImages) ? options.referenceImages : []);
-        return rawList
-            .map((item) => {
-                if (typeof item === 'string') {
-                    const raw = String(item || '').trim();
-                    if (!raw) return '';
-                    if (/^data:image\//i.test(raw) || /^https?:\/\//i.test(raw)) return raw;
-                    const compact = raw.replace(/\s+/g, '');
-                    if (compact.length >= 80 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)) {
-                        return `data:image/png;base64,${compact}`;
-                    }
-                    return '';
-                }
-                const raw = String(
-                    item?.imageUrl
-                    || item?.url
-                    || item?.image
-                    || item?.imageData
-                    || item?.dataUrl
-                    || item?.base64
-                    || ''
-                ).trim();
-                if (!raw) return '';
-                if (/^data:image\//i.test(raw) || /^https?:\/\//i.test(raw)) return raw;
-                const compact = raw.replace(/\s+/g, '');
-                if (compact.length >= 80 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)) {
-                    return `data:image/png;base64,${compact}`;
-                }
-                return '';
-            })
-            .filter(Boolean)
-            .slice(0, 10);
+        return rawList.filter((item) => this._extractSeedreamImageSource(item)).length;
+    }
+
+    async _resolveSeedreamImageInput(raw, signal = null) {
+        const value = String(raw || '').trim();
+        if (!value) return '';
+        if (/^data:image\//i.test(value) || /^https?:\/\//i.test(value)) return value;
+        if (value.startsWith('/') || value.startsWith('blob:') || value.startsWith('./')) {
+            const dataUrl = await this._imageUrlToNovelAIReferenceDataUrl(value);
+            return /^data:image\//i.test(dataUrl) ? dataUrl : '';
+        }
+        const compact = value.replace(/\s+/g, '');
+        if (compact.length >= 80 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)) {
+            return `data:image/png;base64,${compact}`;
+        }
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+        return '';
+    }
+
+    async _normalizeSeedreamImages(options = {}) {
+        const rawList = Array.isArray(options.novelAIReferences)
+            ? options.novelAIReferences
+            : (Array.isArray(options.referenceImages) ? options.referenceImages : []);
+        const images = [];
+        for (const item of rawList) {
+            if (images.length >= 10) break;
+            const raw = this._extractSeedreamImageSource(item);
+            if (!raw) continue;
+            const resolved = await this._resolveSeedreamImageInput(raw, options.signal);
+            if (resolved) images.push(resolved);
+        }
+        return images;
     }
 
     _buildSeedreamAuthHeaders(config = {}) {
@@ -4264,7 +4280,11 @@ export class ImageGenerationManager {
         const height = Number(options.height || config.height) || 1024;
         const size = this._getSeedreamSize(width, height);
         const [requestedWidth, requestedHeight] = size.split('*').map(Number);
-        const images = this._normalizeSeedreamImages(options);
+        const providedReferenceCount = this._countSeedreamImageSources(options);
+        const images = await this._normalizeSeedreamImages(options);
+        if (providedReferenceCount > 0 && images.length === 0) {
+            throw new Error('已有参考图，但无法读取成 Seedream 可提交的图片。请确认参考图仍可访问。');
+        }
         const hasReferenceImages = images.length > 0;
         const model = hasReferenceImages
             ? (String(config.seedreamEditModel || '').trim() || 'bytedance/seedream-v5.0-pro/edit')
